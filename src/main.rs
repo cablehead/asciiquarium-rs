@@ -4,10 +4,7 @@
 //! art (`art`), and the spawners (`spawn`), driven by a crossterm event loop
 //! that doubles as the frame clock.
 
-mod art;
-mod entity;
-mod render;
-mod spawn;
+use asciiquarium::{entity, render, spawn};
 
 use std::collections::{HashMap, HashSet};
 use std::io::{self, Write};

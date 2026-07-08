@@ -93,6 +93,21 @@ impl Screen {
         }
     }
 
+    /// The buffer as plain text (no color), rows joined by newlines. Handy for
+    /// snapshot tests and debugging.
+    pub fn to_text(&self) -> String {
+        let mut out = String::with_capacity((self.w as usize + 1) * self.h as usize);
+        for row in 0..self.h {
+            for col in 0..self.w {
+                out.push(self.cells[row as usize * self.w as usize + col as usize].ch);
+            }
+            if row + 1 < self.h {
+                out.push('\n');
+            }
+        }
+        out
+    }
+
     /// Flush the buffer to stdout in one pass, emitting a color escape only when
     /// the run color changes.
     pub fn render(&self, out: &mut impl Write) -> io::Result<()> {
