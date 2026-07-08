@@ -56,9 +56,16 @@ The original is licensed GPL-2.0-or-later, and so is this port.
 Reading the Perl, the surprising thing is how little of it is animation code.
 Almost the entire ~1500 lines are two things: piles of ASCII-art strings, and
 entity declarations. The actual engine lives in a CPAN module,
-`Term::Animation`, which the script drives. So the program is really a
-*scene description*, and the interesting mechanics are in how that description
-is encoded. A few highlights:
+[`Term::Animation`](https://metacpan.org/dist/Term-Animation) -- which Kirk
+Baucom wrote himself (CPAN id `KBAUCOM`), factoring the sprite machinery out of
+his own aquarium into a reusable "ASCII sprite animation framework" first
+released in 2003 and last updated (v2.6) in 2011. It in turn requires `Curses`,
+the XS binding to the C curses library -- which is why the original only runs
+where curses exists. So the script is really a *scene description* driving
+Baucom's engine, and the interesting mechanics are in how that description is
+encoded. (This port therefore replaces two layers at once: Term::Animation's
+sprite/z-depth/collision model and curses underneath it, both collapsed into the
+hand-rolled `crossterm` compositor.) A few highlights:
 
 - **Color masks.** Every sprite has a shape and a second text block of the same
   layout -- the mask -- where each character picks the color of the shape cell
