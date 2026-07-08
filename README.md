@@ -1,13 +1,27 @@
-# asciiquarium-rs
+<h1 align="center">asciiquarium-rs</h1>
 
-An aquarium/sea animation in ASCII art, for your terminal -- a Rust port of the
-classic Perl `asciiquarium`, written by Kirk Baucom in 2003
-([robobunny.com](https://robobunny.com/projects/asciiquarium/)). This port
-follows Claudio Matsuoka's canonical Perl copy
-([cmatsuoka/asciiquarium](https://github.com/cmatsuoka/asciiquarium)), which
-adds the later "new" creatures.
+<p align="center">
+  An aquarium animation in ASCII art, for your terminal -- a Rust port of Kirk
+  Baucom's classic Perl
+  <a href="https://robobunny.com/projects/asciiquarium/"><code>asciiquarium</code></a>.
+</p>
 
-```
+<p align="center">
+  <a href="#build-and-run">Build &amp; run</a>
+  &middot;
+  <a href="#how-the-original-pulls-it-off">How it works</a>
+  &middot;
+  <a href="#the-rust-port">The Rust port</a>
+  &middot;
+  <a href="#credit-and-lineage">Credits</a>
+</p>
+
+<p align="center">
+  <img alt="license: GPL-2.0-or-later" src="https://img.shields.io/badge/license-GPL--2.0--or--later-blue.svg">
+  <img alt="built with crossterm" src="https://img.shields.io/badge/built%20with-crossterm-orange.svg">
+</p>
+
+<pre align="center">
          |    |    |                                             . .
         )_)  )_)  )_)                                          '.-:-.`
        )___))___))___)\                                        '  :  '
@@ -23,20 +37,29 @@ adds the later "new" creatures.
               .='\ \ \`"=,                   )  \
             .'\ \ \ \ \ \ \     (`.      _.-`' ' '`-.
  \'=._     / \ \ \_\_\_\_\_\     \ `.  .`        (o) \_          T~~
- \'=._'.  /\ \,-"`- _ - _ - '-.   >  ><     (((       (          |
+ \'=._'.  /\ \,-"`- _ - _ - '-.   &gt;  &gt;&lt;     (((       (          |
    \`=._\|'.\/- _ - _ - _ - _- \ / .`  `._      /_|  /'         /^\
    ;"= ._\=./_ -_ -_ {`"=_    @ (.`       `-. _  _.-`          /   \
     ;="_-_=- _ -  _ - {"=_"-     \          /__/'  _   _   _  /     \  _   _   _
     ;_=_--_.,          {_.='   .-/   \            [ ]_[ ]_[ ]/ _   _ \[ ]_[ ]_[ ]
    ;.="` / ';\        _.     _.-`   / \        O  |_=__-_ =_|_[ ]_[ ]_|_=-___-__|
-   /_.='/ \/ /;._ _ _{.-;`/"`     >=_('>       o   | _- =  | =_ = _    |= _=   |
+   /_.='/ \/ /;._ _ _{.-;`/"`     &gt;=_('&gt;       o   | _- =  | =_ = _    |= _=   |
  /._=_.'   '/ / / / /{.= /          \_/        .   |= -[]  |- = _ = /  |_-=_[] |
  /.='       `'./_/_.=`{_/            /      (      | =_    |= - ___/ \ | =_ =  |
-                                             )  )  |=  []- |-  /| <')_=<=_ =[] |
+                                             )  )  |=  []- |-  /| &lt;')_=&lt;=_ =[] |
                                             (  (   |- =_   | =| | |\_/ |- = -  |
                                              )  )  |_______|__|_|_|_\__|_______|
                                             (  (
-```
+</pre>
+
+---
+
+The whole cast is here: the water surface, the castle, swaying seaweed, both
+fish art sets and their air bubbles, sharks (with the biting "teeth" and a
+splat), ships, whales with an animated spout, sea monsters (new and classic),
+and both big fish -- all fed by the roaming-special chain, with a `-c` classic
+mode. It matches the reference; the handful of intentional differences are noted
+at the end.
 
 ## Build and run
 
