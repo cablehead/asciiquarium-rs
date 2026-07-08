@@ -8,20 +8,35 @@ follows Claudio Matsuoka's canonical Perl copy
 adds the later "new" creatures.
 
 ```
-   \                                            /
-  / \       >=_('>                    <')_=<   / \
->=_('>                     .                  <')_=<
-  \_/         o           ( )                  \_/
-   /                                            \
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-```
+         |    |    |                                             . .
+        )_)  )_)  )_)                                          '.-:-.`
+       )___))___))___)\                                        '  :  '
+      )____)____)_____)\\                                   .-----:
+    _____|____|____|____\\\__                             .'       `.
+    \                   /                           ,    /       (o) \
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\`._/~~~~~~~~~~,__)~~~~~~~~~~~~~
+^^^^ ^^^  ^^^   ^^^    ^^^^      ^^^^ ^^^  ^^^   ^^^    ^^^^      ^^^^ ^^^  ^^^   ^^
+^^^^      ^^^^     ^^^    ^^     ^^^^      ^^^^     ^^^    ^^     ^^^^      ^^^^
+^^      ^^^^      ^^^    ^^^^^^  ^^      ^^^^      ^^^    ^^^^^^  ^^      ^^^^
 
-The whole cast is here: the water surface, the castle, swaying seaweed, both
-fish art sets and their air bubbles, sharks (with the biting "teeth" and a
-splat), ships, whales with an animated spout, sea monsters (new and classic),
-and both big fish -- all fed by the roaming-special chain, with a `-c` classic
-mode. It matches the reference; the handful of intentional differences are noted
-at the end.
+                 _ _ _                      \'`.
+              .='\ \ \`"=,                   )  \
+            .'\ \ \ \ \ \ \     (`.      _.-`' ' '`-.
+ \'=._     / \ \ \_\_\_\_\_\     \ `.  .`        (o) \_          T~~
+ \'=._'.  /\ \,-"`- _ - _ - '-.   >  ><     (((       (          |
+   \`=._\|'.\/- _ - _ - _ - _- \ / .`  `._      /_|  /'         /^\
+   ;"= ._\=./_ -_ -_ {`"=_    @ (.`       `-. _  _.-`          /   \
+    ;="_-_=- _ -  _ - {"=_"-     \          /__/'  _   _   _  /     \  _   _   _
+    ;_=_--_.,          {_.='   .-/   \            [ ]_[ ]_[ ]/ _   _ \[ ]_[ ]_[ ]
+   ;.="` / ';\        _.     _.-`   / \        O  |_=__-_ =_|_[ ]_[ ]_|_=-___-__|
+   /_.='/ \/ /;._ _ _{.-;`/"`     >=_('>       o   | _- =  | =_ = _    |= _=   |
+ /._=_.'   '/ / / / /{.= /          \_/        .   |= -[]  |- = _ = /  |_-=_[] |
+ /.='       `'./_/_.=`{_/            /      (      | =_    |= - ___/ \ | =_ =  |
+                                             )  )  |=  []- |-  /| <')_=<=_ =[] |
+                                            (  (   |- =_   | =| | |\_/ |- = -  |
+                                             )  )  |_______|__|_|_|_\__|_______|
+                                            (  (
+```
 
 ## Build and run
 
