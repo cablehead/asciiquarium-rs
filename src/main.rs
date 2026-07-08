@@ -15,7 +15,7 @@ use std::time::Duration;
 use clap::Parser;
 use crossterm::{
     cursor,
-    event::{self, Event, KeyCode},
+    event::{self, Event, KeyCode, KeyModifiers},
     execute,
     style::Color,
     terminal::{self, EnterAlternateScreen, LeaveAlternateScreen},
@@ -56,6 +56,10 @@ fn run(out: &mut impl Write, classic: bool) -> io::Result<()> {
         if event::poll(Duration::from_millis(100))? {
             match event::read()? {
                 Event::Key(k) => match k.code {
+                    // Raw mode swallows SIGINT, so handle Ctrl-C / Ctrl-D here.
+                    KeyCode::Char('c' | 'd') if k.modifiers.contains(KeyModifiers::CONTROL) => {
+                        return Ok(())
+                    }
                     KeyCode::Char('q') => return Ok(()),
                     KeyCode::Char('p') => paused = !paused,
                     KeyCode::Char('r') => {

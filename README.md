@@ -1,7 +1,7 @@
 # asciiquarium-rs
 
 An aquarium/sea animation in ASCII art, for your terminal -- a Rust port of the
-classic Perl `asciiquarium`.
+classic Perl [`asciiquarium`](https://github.com/cmatsuoka/asciiquarium).
 
 ```
    \                                            /
