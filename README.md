@@ -1,7 +1,11 @@
 # asciiquarium-rs
 
 An aquarium/sea animation in ASCII art, for your terminal -- a Rust port of the
-classic Perl [`asciiquarium`](https://github.com/cmatsuoka/asciiquarium).
+classic Perl `asciiquarium`, written by Kirk Baucom in 2003
+([robobunny.com](https://robobunny.com/projects/asciiquarium/)). This port
+follows Claudio Matsuoka's canonical Perl copy
+([cmatsuoka/asciiquarium](https://github.com/cmatsuoka/asciiquarium)), which
+adds the later "new" creatures.
 
 ```
    \                                            /
@@ -14,23 +18,27 @@ classic Perl [`asciiquarium`](https://github.com/cmatsuoka/asciiquarium).
 
 ## Status
 
-Early prototype. This is a deliberately narrow vertical slice that proves the
-rendering model: a hand-rolled compositor, the entity system, color masks, and
-the event loop, with fish swimming and blowing bubbles beneath a tiled water
-surface. The rest of the original's cast (seaweed, castle, sharks, ships,
-whales, sea monsters, big fish) ports onto these same pieces -- see the roadmap.
+At parity with the reference. The whole cast is in: water surface, castle,
+swaying seaweed, both fish art sets, air bubbles, sharks (with the biting
+"teeth" and a splat), ships, whales with an animated spout, sea monsters (new
+and classic), and both big fish -- all fed by the roaming-special chain, with
+`-c` classic mode. See the roadmap for what "parity" does and does not cover.
 
 ## Credit and lineage
 
 This is a port; essentially none of the creative work is mine.
 
-- Original `asciiquarium` by **Kirk Baucom** -- <https://robobunny.com/projects/asciiquarium/>
-- Most of the ASCII art by **Joan Stark** (`spunk1111`), a giant of the ASCII
-  art scene.
-- Expanded marine biodiversity (the "new" fish and sea monster) by
-  **Claudio Matsuoka**, backported from the Asciiquarium Live Wallpaper for
-  Android. The reference implementation this port follows is Claudio's:
-  **<https://github.com/cmatsuoka/asciiquarium>**
+- **2003** -- `asciiquarium` created by **Kirk Baucom**, and still maintained at
+  <https://robobunny.com/projects/asciiquarium/>. Version 1.1 (2013) is the one
+  ported here.
+- **late 1990s** -- most of the ASCII art is by **Joan Stark** (`spunk1111`), a
+  giant of the ASCII art scene whose work dates from the height of the web-art
+  era.
+- **~2011** -- the extra "new" fish and sea monster were drawn for the
+  **Asciiquarium Live Wallpaper for Android**, then backported into the Perl by
+  **Claudio Matsuoka**, whose GitHub repo became the canonical copy this port
+  follows: <https://github.com/cmatsuoka/asciiquarium>
+- **2026** -- this Rust port.
 
 The original is licensed GPL-2.0-or-later, and so is this port.
 
@@ -98,6 +106,12 @@ is encoded. A few highlights:
   arrays, paired by `$i` and `$i+1`. It works, but it is fragile; the port folds
   each pair into one struct.
 
+- **`?` is transparency, not a glyph.** The shark, sea monster, and big fish art
+  is speckled with `?`. It never renders: `?` is Term::Animation's default
+  transparency character, so those cells let the water behind show through.
+  Entities with `auto_trans` additionally treat spaces as transparent. Miss this
+  and every shark swims inside a box of question marks.
+
 - **Signal paranoia.** The original installs a handler on *every* signal it can,
   specifically so a stray signal can never leave your terminal in raw mode. The
   Rust port gets the same guarantee structurally (see below).
@@ -116,21 +130,30 @@ small and the interesting parts are:
 
 - **`src/entity.rs` -- the entity model.** Multi-frame sprites (a `Frame` bundles
   shape + mask so they can never drift out of sync), fractional per-tick
-  velocity so fish move at sub-cell speeds, and off-screen death. `resolve_fish_mask`
-  reproduces the Perl's per-digit random coloring exactly, eye-forced-white and
-  all.
+  velocity so fish move at sub-cell speeds, three ways to die (off-screen, a
+  frame count, a deadline tick), and a `?`/`auto_trans` transparency test.
+  `resolve_fish_mask` reproduces the Perl's per-digit random coloring exactly,
+  eye-forced-white and off-by-one bug and all.
 
-- **`src/main.rs` -- the loop.** `crossterm::event::poll(100ms)` is the direct
-  analog of `halfdelay(1)`: one call that is both the input read and the frame
-  clock. `Event::Resize` comes through the same stream, so live resize is free
-  -- an improvement over the original, which ignores `SIGWINCH` and only reacts
-  on `r`.
+- **`src/art.rs` -- generated, byte-exact art.** Rather than retype the
+  backslash-dense art by hand, a small Perl script (`tools/`) re-reads the
+  reference and evals each `q{...}` / `"..."` literal so Perl itself does the
+  de-escaping, then emits this file as raw-string constants.
+  `src/spawn.rs` groups those into creatures and ports each `add_*` spawner.
+
+- **`src/main.rs` -- the loop and collisions.** `crossterm::event::poll(100ms)`
+  is the direct analog of `halfdelay(1)`: one call that is both the input read
+  and the frame clock. `Event::Resize` comes through the same stream, so live
+  resize is free -- an improvement over the original, which ignores `SIGWINCH`
+  and only reacts on `r`. Collisions are a per-frame cell-overlap pass over the
+  physical entities (bubbles vs. the waterline, small fish vs. shark teeth).
 
 - **`death_cb` without shared mutable state.** The Perl mutates the live
   animation from inside a callback mid-iteration. Rust's borrow checker would
-  fight that, and it is genuinely error-prone, so `tick()` instead collects
+  fight that, and it is genuinely error-prone, so `advance()` instead collects
   spawn requests into a `Vec` during the pass and appends them after -- same
-  behavior, no aliasing.
+  behavior, no aliasing. The single roaming special keeps itself alive this
+  way: each one's death spawns the next.
 
 - **A `TerminalGuard` with a `Drop` impl** restores raw mode and the alternate
   screen no matter how the program leaves -- normal exit, `?` early-return, or
@@ -144,13 +167,23 @@ small and the interesting parts are:
 
 ## Roadmap
 
-- [x] Compositor: z-depth, space-transparency, color masks
-- [x] Entities: multi-frame sprites, fractional movement, off-screen death
-- [x] Fish (both facings), bubbles, tiled waterline
-- [x] `-c` / `--classic` flag plumbed through
-- [ ] Seaweed (swaying, timed lifecycle) and the castle
-- [ ] Collisions: shark teeth eating small fish (with a splat), bubbles popping
-      handled generically rather than the current waterline special-case
-- [ ] The roaming specials: ship, whale (with spout animation), shark, sea
-      monster, big fish
-- [ ] The full "new" art sets vs. classic
+Done -- at parity with the reference:
+
+- [x] Compositor: z-depth, `?`/space transparency, color masks
+- [x] Entities: multi-frame sprites, fractional movement, off-screen /
+      frame-count / timed death, death-spawns-successor
+- [x] Fish (both art sets and facings), air bubbles, tiled waterline
+- [x] Seaweed (swaying, minutes-long lifecycle) and the castle
+- [x] Cell-overlap collisions: shark teeth eat small fish and leave a splat;
+      bubbles pop at the surface
+- [x] The roaming specials, one at a time via the death chain: ship, whale
+      (animated spout), shark, sea monster (new + classic), both big fish
+- [x] `-c` / `--classic` art selection throughout
+
+Deliberately not matched:
+
+- Timing is per-tick, paced by the ~10fps `poll` timeout, rather than
+  wall-clock scaled. This matches how Term::Animation advances per `animate()`
+  call, so the feel is the same, but it is not frame-rate independent.
+- The seaweed lifetime is converted from the original's wall-clock seconds to
+  ticks at an assumed ten per second.

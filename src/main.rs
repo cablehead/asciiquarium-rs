@@ -1,14 +1,15 @@
 //! asciiquarium, in Rust. See README.md for the port notes.
 //!
-//! This is a vertical slice: a hand-rolled compositor, the entity model, and a
-//! crossterm event loop that doubles as the frame clock -- enough to prove the
-//! shape/mask/z-depth/transparency model with fish swimming and blowing
-//! bubbles. The rest of the original's menagerie ports onto the same pieces.
+//! A hand-rolled compositor (`render`), an entity model (`entity`), byte-exact
+//! art (`art`), and the spawners (`spawn`), driven by a crossterm event loop
+//! that doubles as the frame clock.
 
 mod art;
 mod entity;
 mod render;
+mod spawn;
 
+use std::collections::{HashMap, HashSet};
 use std::io::{self, Write};
 use std::time::Duration;
 
@@ -17,16 +18,11 @@ use crossterm::{
     cursor,
     event::{self, Event, KeyCode, KeyModifiers},
     execute,
-    style::Color,
-    terminal::{self, EnterAlternateScreen, LeaveAlternateScreen},
+    terminal::{self, DisableLineWrap, EnableLineWrap, EnterAlternateScreen, LeaveAlternateScreen},
 };
 use rand::Rng;
 
-use entity::{Entity, Frame, Kind};
-
-/// The water surface occupies these rows; fish live below it.
-const WATER_TOP: i32 = 5;
-const WATER_BOTTOM: i32 = WATER_TOP + art::WATER_SEGMENTS.len() as i32 - 1;
+use entity::{Entity, EntityType, OnDeath};
 
 /// An aquarium animation in ASCII art.
 #[derive(Parser)]
@@ -47,6 +43,7 @@ fn run(out: &mut impl Write, classic: bool) -> io::Result<()> {
     let mut rng = rand::thread_rng();
     let (mut w, mut h) = terminal::size()?;
     let mut screen = render::Screen::new(w, h);
+    let mut tick: u64 = 0;
     let mut entities = build_scene(w, h, classic, &mut rng);
     let mut paused = false;
 
@@ -62,9 +59,7 @@ fn run(out: &mut impl Write, classic: bool) -> io::Result<()> {
                     }
                     KeyCode::Char('q') => return Ok(()),
                     KeyCode::Char('p') => paused = !paused,
-                    KeyCode::Char('r') => {
-                        entities = build_scene(w, h, classic, &mut rng);
-                    }
+                    KeyCode::Char('r') => entities = build_scene(w, h, classic, &mut rng),
                     _ => {}
                 },
                 Event::Resize(nw, nh) => {
@@ -78,7 +73,8 @@ fn run(out: &mut impl Write, classic: bool) -> io::Result<()> {
         }
 
         if !paused {
-            tick(&mut entities, w, h, classic, &mut rng);
+            advance(&mut entities, tick, w, h, classic, &mut rng);
+            tick += 1;
         }
 
         // Draw back-to-front: higher z first, lower z last (on top).
@@ -92,150 +88,139 @@ fn run(out: &mut impl Write, classic: bool) -> io::Result<()> {
                 &f.shape,
                 &f.mask,
                 e.default_color,
+                e.auto_trans,
+                e.trans,
             );
         }
         screen.render(out)?;
     }
 }
 
-/// Advance the world one frame: move everything, emit and pop bubbles, and keep
-/// the fish population topped up as they swim off-screen.
-fn tick(entities: &mut Vec<Entity>, w: u16, h: u16, classic: bool, rng: &mut impl Rng) {
+/// Advance the world one frame: move, emit bubbles, resolve collisions, then
+/// remove the dead and run their death actions (respawns and the roaming
+/// special's successor).
+fn advance(
+    entities: &mut Vec<Entity>,
+    tick: u64,
+    w: u16,
+    h: u16,
+    classic: bool,
+    rng: &mut impl Rng,
+) {
     for e in entities.iter_mut() {
-        e.update(w, h);
+        e.update(tick, w, h);
     }
+
+    let mut spawns: Vec<Entity> = Vec::new();
 
     // Fish occasionally blow a bubble (original: ~2% chance per tick).
-    let mut spawns: Vec<Entity> = Vec::new();
     for e in entities.iter() {
-        if e.kind == Kind::Fish && e.alive && rng.gen_range(0..100) > 97 {
-            spawns.push(spawn_bubble(e));
+        if e.etype == EntityType::Fish && e.alive && rng.gen_range(0..100) > 97 {
+            spawns.push(spawn::bubble(e));
         }
     }
 
-    // A bubble pops when it reaches the surface.
-    for e in entities.iter_mut() {
-        if e.kind == Kind::Bubble && e.y.round() as i32 <= WATER_BOTTOM {
-            e.alive = false;
-        }
-    }
+    resolve_collisions(entities, &mut spawns);
 
-    // Each fish that swam off-screen is replaced (the original's death_cb).
-    let respawn = entities
+    // When the shark dies, its teeth (the collision proxy) go with it.
+    if entities
         .iter()
-        .filter(|e| e.kind == Kind::Fish && !e.alive)
-        .count();
-    entities.retain(|e| e.alive);
-    for _ in 0..respawn {
-        spawns.push(spawn_fish(w, h, classic, rng));
+        .any(|e| e.etype == EntityType::Shark && !e.alive)
+    {
+        for e in entities.iter_mut() {
+            if e.etype == EntityType::Teeth {
+                e.alive = false;
+            }
+        }
     }
+
+    // Death actions: the port of Term::Animation's death_cb.
+    for e in entities.iter().filter(|e| !e.alive) {
+        match e.on_death {
+            OnDeath::Fish => spawns.push(spawn::fish(w, h, classic, rng)),
+            OnDeath::Seaweed => spawns.push(spawn::seaweed(w, h, tick, rng)),
+            OnDeath::RandomObject => spawns.extend(spawn::random_object(w, h, classic, rng)),
+            OnDeath::Nothing => {}
+        }
+    }
+
+    entities.retain(|e| e.alive);
     entities.extend(spawns);
 }
 
-/// Build the whole scene from scratch: the water surface plus a screen-sized
-/// school of fish.
+/// Cell-overlap collisions among physical entities. Two rules, as in the
+/// original: a small fish meeting the shark's teeth is eaten (leaving a splat),
+/// and a bubble meeting the waterline pops.
+fn resolve_collisions(entities: &mut [Entity], spawns: &mut Vec<Entity>) {
+    // Which entities occupy each cell.
+    let mut occ: HashMap<(i32, i32), Vec<usize>> = HashMap::new();
+    for (i, e) in entities.iter().enumerate() {
+        if e.physical && e.alive {
+            for c in e.cells() {
+                occ.entry(c).or_default().push(i);
+            }
+        }
+    }
+
+    let mut eat: Vec<(usize, usize)> = Vec::new(); // (fish, teeth)
+    let mut pop: HashSet<usize> = HashSet::new(); // bubbles
+    let mut seen_fish: HashSet<usize> = HashSet::new();
+
+    for occupants in occ.values() {
+        if occupants.len() < 2 {
+            continue;
+        }
+        let has = |t: EntityType| occupants.iter().find(|&&i| entities[i].etype == t).copied();
+        for &i in occupants {
+            match entities[i].etype {
+                EntityType::Fish => {
+                    if entities[i].current().height() <= 5 && !seen_fish.contains(&i) {
+                        if let Some(t) = has(EntityType::Teeth) {
+                            eat.push((i, t));
+                            seen_fish.insert(i);
+                        }
+                    }
+                }
+                EntityType::Bubble if has(EntityType::Waterline).is_some() => {
+                    pop.insert(i);
+                }
+                _ => {}
+            }
+        }
+    }
+
+    for (fish, teeth) in eat {
+        let (tx, ty, tz) = (
+            entities[teeth].x.round() as i32,
+            entities[teeth].y.round() as i32,
+            entities[teeth].z,
+        );
+        spawns.push(spawn::splat(tx, ty, tz));
+        entities[fish].alive = false;
+    }
+    for b in pop {
+        entities[b].alive = false;
+    }
+}
+
+/// Build the whole scene: water, castle, seaweed, a screen-sized school of
+/// fish, and one roaming special.
 fn build_scene(w: u16, h: u16, classic: bool, rng: &mut impl Rng) -> Vec<Entity> {
-    let mut entities = Vec::new();
+    let mut entities = spawn::water(w);
+    entities.push(spawn::castle(w, h));
 
-    // Tile each water segment across the full width.
-    let seg_w = art::WATER_SEGMENTS[0].len();
-    let repeat = w as usize / seg_w + 1;
-    for (i, seg) in art::WATER_SEGMENTS.iter().enumerate() {
-        entities.push(Entity {
-            kind: Kind::Waterline,
-            x: 0.0,
-            y: (WATER_TOP + i as i32) as f64,
-            z: 2 + i as i32,
-            dx: 0.0,
-            dy: 0.0,
-            frames: vec![Frame::new(&seg.repeat(repeat), "")],
-            frame: 0.0,
-            frame_speed: 0.0,
-            default_color: Color::DarkCyan,
-            die_offscreen: false,
-            alive: true,
-        });
+    let seaweed_count = w as i32 / 15;
+    for _ in 0..seaweed_count {
+        entities.push(spawn::seaweed(w, h, 0, rng));
     }
 
-    // Fish count scales with the water area, as in the original.
-    let area = (h as i32 - 9).max(0) * w as i32;
-    let fish_count = area / 350;
+    let fish_count = (h as i32 - 9).max(0) * w as i32 / 350;
     for _ in 0..fish_count {
-        entities.push(spawn_fish(w, h, classic, rng));
+        entities.push(spawn::fish(w, h, classic, rng));
     }
 
+    entities.extend(spawn::random_object(w, h, classic, rng));
     entities
-}
-
-/// Spawn one fish at a random depth, facing and speed, entering from the edge it
-/// swims away from.
-fn spawn_fish(w: u16, h: u16, _classic: bool, rng: &mut impl Rng) -> Entity {
-    let right = rng.gen_bool(0.5);
-    let (shape, mask) = if right {
-        (art::FISH_R_SHAPE, art::FISH_R_MASK)
-    } else {
-        (art::FISH_L_SHAPE, art::FISH_L_MASK)
-    };
-    let mask = entity::resolve_fish_mask(mask, rng);
-    let frame = Frame::new(shape, &mask);
-
-    let speed = rng.gen_range(0.25..2.25);
-    let dx = if right { speed } else { -speed };
-
-    // Vertical band: below the surface, fully on-screen.
-    let top = 9;
-    let bottom = (h as i32 - frame.height()).max(top);
-    let y = rng.gen_range(top..=bottom) as f64;
-
-    // Enter from the side it is heading away from.
-    let x = if right {
-        1.0 - frame.width() as f64
-    } else {
-        w as f64 - 2.0
-    };
-
-    let z = rng.gen_range(3..20);
-
-    Entity {
-        kind: Kind::Fish,
-        x,
-        y,
-        z,
-        dx,
-        dy: 0.0,
-        frames: vec![frame],
-        frame: 0.0,
-        frame_speed: 0.0,
-        default_color: Color::Yellow,
-        die_offscreen: true,
-        alive: true,
-    }
-}
-
-/// Spawn a bubble at a fish's leading edge; it rises and grows as it goes.
-fn spawn_bubble(fish: &Entity) -> Entity {
-    let f = fish.current();
-    let x = if fish.dx > 0.0 {
-        fish.x + f.width() as f64
-    } else {
-        fish.x
-    };
-    let y = fish.y + (f.height() as f64 / 2.0);
-
-    Entity {
-        kind: Kind::Bubble,
-        x,
-        y,
-        z: fish.z - 1, // always in front of its fish
-        dx: 0.0,
-        dy: -0.34,
-        frames: art::BUBBLE.iter().map(|s| Frame::new(s, "")).collect(),
-        frame: 0.0,
-        frame_speed: 0.2,
-        default_color: Color::Cyan,
-        die_offscreen: true,
-        alive: true,
-    }
 }
 
 /// Puts the terminal into raw / alternate-screen mode and restores it on drop,
@@ -248,14 +233,16 @@ impl TerminalGuard {
     fn enter() -> io::Result<Self> {
         terminal::enable_raw_mode()?;
         let mut out = io::stdout();
-        execute!(out, EnterAlternateScreen, cursor::Hide)?;
+        // Disable auto-wrap: a full-width row must not wrap past the last
+        // column, or it compounds with our newline and drifts the frame.
+        execute!(out, EnterAlternateScreen, cursor::Hide, DisableLineWrap)?;
         Ok(TerminalGuard { out })
     }
 }
 
 impl Drop for TerminalGuard {
     fn drop(&mut self) {
-        let _ = execute!(self.out, cursor::Show, LeaveAlternateScreen);
+        let _ = execute!(self.out, cursor::Show, EnableLineWrap, LeaveAlternateScreen);
         let _ = terminal::disable_raw_mode();
     }
 }

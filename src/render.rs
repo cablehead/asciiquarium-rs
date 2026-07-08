@@ -53,10 +53,21 @@ impl Screen {
 
     /// Blit one sprite frame at (x, y). `shape` and `mask` are line-aligned:
     /// the mask char at the same row/col picks the color, falling back to
-    /// `default` where the mask is blank. Space in the shape is transparent, so
-    /// whatever a lower-z entity already wrote shows through -- this is the
-    /// whole trick behind fish swimming "in front of" the castle.
-    pub fn blit(&mut self, x: i32, y: i32, shape: &[String], mask: &[String], default: Color) {
+    /// `default` where the mask is blank. A shape char is transparent -- lets
+    /// whatever a lower-z entity wrote show through -- when it equals `trans`
+    /// (or is a space and `auto_trans` is set). This is the whole trick behind
+    /// fish swimming "in front of" the castle.
+    #[allow(clippy::too_many_arguments)]
+    pub fn blit(
+        &mut self,
+        x: i32,
+        y: i32,
+        shape: &[String],
+        mask: &[String],
+        default: Color,
+        auto_trans: bool,
+        trans: char,
+    ) {
         for (row, line) in shape.iter().enumerate() {
             let cy = y + row as i32;
             if cy < 0 || cy >= self.h as i32 {
@@ -64,7 +75,7 @@ impl Screen {
             }
             let mask_line = mask.get(row).map(|s| s.as_str()).unwrap_or("");
             for (col, ch) in line.chars().enumerate() {
-                if ch == ' ' {
+                if ch == trans || (auto_trans && ch == ' ') {
                     continue; // transparent
                 }
                 let cx = x + col as i32;
@@ -140,19 +151,30 @@ mod tests {
     }
 
     #[test]
-    fn space_is_transparent() {
+    fn space_is_transparent_with_auto_trans() {
         let mut s = Screen::new(4, 1);
-        s.blit(0, 0, &["XX".into()], &[], Color::Reset);
-        // A shape with a leading space must not overwrite the first cell.
-        s.blit(0, 0, &[" Y".into()], &[], Color::Reset);
+        s.blit(0, 0, &["XX".into()], &[], Color::Reset, true, '?');
+        // A leading space with auto_trans must not overwrite the first cell.
+        s.blit(0, 0, &[" Y".into()], &[], Color::Reset, true, '?');
         assert_eq!(cell_at(&s, 0, 0).ch, 'X');
         assert_eq!(cell_at(&s, 1, 0).ch, 'Y');
     }
 
     #[test]
+    fn question_mark_transparent_but_space_opaque_without_auto_trans() {
+        let mut s = Screen::new(3, 1);
+        s.blit(0, 0, &["XXX".into()], &[], Color::Reset, false, '?');
+        // Without auto_trans, '?' is transparent but ' ' overwrites.
+        s.blit(0, 0, &["? Z".into()], &[], Color::Reset, false, '?');
+        assert_eq!(cell_at(&s, 0, 0).ch, 'X'); // kept (transparent '?')
+        assert_eq!(cell_at(&s, 1, 0).ch, ' '); // overwritten (opaque space)
+        assert_eq!(cell_at(&s, 2, 0).ch, 'Z');
+    }
+
+    #[test]
     fn mask_selects_color_else_default() {
         let mut s = Screen::new(2, 1);
-        s.blit(0, 0, &["ab".into()], &["R".into()], Color::Green);
+        s.blit(0, 0, &["ab".into()], &["R".into()], Color::Green, true, '?');
         assert_eq!(cell_at(&s, 0, 0).fg, Color::Red); // masked
         assert_eq!(cell_at(&s, 1, 0).fg, Color::Green); // default
     }
