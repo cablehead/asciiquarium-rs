@@ -223,3 +223,14 @@ on Windows, whereas `crossterm` is cross-platform.
 
 `src/art.rs` is generated from the reference Perl, not hand-written. See
 [`tools/`](tools/) to reproduce it.
+
+## License
+
+**GPL-2.0-or-later**, the same as the original -- see [`LICENSE`](LICENSE).
+
+This is a derivative work. It reproduces the original ASCII art verbatim and
+follows the structure of Kirk Baucom's `asciiquarium` (copyright (C) 2003, GPL
+v2 or later), so it inherits that license; it cannot be relicensed. The
+copyright in the art and the original program stays with its authors (Kirk
+Baucom, Joan Stark, Claudio Matsuoka); this port only adds the Rust
+implementation, offered under the same terms.

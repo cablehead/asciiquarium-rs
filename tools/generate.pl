@@ -31,10 +31,15 @@ while ($txt =~ /===SUB (\S+) #(\d+)===\n(.*?)\n===END===\n/gs) {
 print <<'HEADER';
 // @generated from the reference Perl by tools/generate.pl -- do not edit.
 //
-// Byte-exact ASCII art, de-escaped by Perl from cmatsuoka/asciiquarium. Every
-// block is a raw string so backslashes stay literal. In these sprites '?' is
-// the transparency character (Term::Animation's default) and, where auto_trans
-// is set, ' ' is transparent too. See sprites.rs for how they are grouped into
+// This ASCII art is the creative work of the original asciiquarium: mostly by
+// Joan Stark, with later additions by Claudio Matsuoka, distributed under the
+// GNU General Public License v2 or later. Copyright (C) 2003 Kirk Baucom. It is
+// reproduced here verbatim under those terms; see the LICENSE file.
+//
+// Byte-exact, de-escaped by Perl from cmatsuoka/asciiquarium. Every block is a
+// raw string so backslashes stay literal. In these sprites '?' is the
+// transparency character (Term::Animation's default) and, where auto_trans is
+// set, ' ' is transparent too. See spawn.rs for how they are grouped into
 // creatures.
 
 HEADER
