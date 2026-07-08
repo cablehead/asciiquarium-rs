@@ -16,13 +16,22 @@ adds the later "new" creatures.
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ```
 
-## Status
+The whole cast is here: the water surface, the castle, swaying seaweed, both
+fish art sets and their air bubbles, sharks (with the biting "teeth" and a
+splat), ships, whales with an animated spout, sea monsters (new and classic),
+and both big fish -- all fed by the roaming-special chain, with a `-c` classic
+mode. It matches the reference; the handful of intentional differences are noted
+at the end.
 
-At parity with the reference. The whole cast is in: water surface, castle,
-swaying seaweed, both fish art sets, air bubbles, sharks (with the biting
-"teeth" and a splat), ships, whales with an animated spout, sea monsters (new
-and classic), and both big fish -- all fed by the roaming-special chain, with
-`-c` classic mode. See the roadmap for what "parity" does and does not cover.
+## Build and run
+
+```
+cargo run               # swim
+cargo run -- --classic  # classic mode: original art set only (-c also works)
+```
+
+Controls: `q` quit, `p` pause, `r` rebuild the scene. Resize the terminal and
+the scene rebuilds to fit.
 
 ## Credit and lineage
 
@@ -41,16 +50,6 @@ This is a port; essentially none of the creative work is mine.
 - **2026** -- this Rust port.
 
 The original is licensed GPL-2.0-or-later, and so is this port.
-
-## Build and run
-
-```
-cargo run              # swim
-cargo run -- --classic # classic mode: original art set only (-c also works)
-```
-
-Controls: `q` quit, `p` pause, `r` rebuild the scene. Resize the terminal and
-the scene rebuilds to fit.
 
 ## How the original pulls it off
 
@@ -161,29 +160,21 @@ small and the interesting parts are:
   paranoia: you cannot forget to clean up, because cleanup is tied to the value
   going out of scope.
 
-- **Windows support, incidentally.** The original notes it needs a curses
-  library and so will not run on Windows. `crossterm` is cross-platform, so this
-  port is not so limited.
+## Differences from the original
 
-## Roadmap
+Two intentional departures, both about timing:
 
-Done -- at parity with the reference:
-
-- [x] Compositor: z-depth, `?`/space transparency, color masks
-- [x] Entities: multi-frame sprites, fractional movement, off-screen /
-      frame-count / timed death, death-spawns-successor
-- [x] Fish (both art sets and facings), air bubbles, tiled waterline
-- [x] Seaweed (swaying, minutes-long lifecycle) and the castle
-- [x] Cell-overlap collisions: shark teeth eat small fish and leave a splat;
-      bubbles pop at the surface
-- [x] The roaming specials, one at a time via the death chain: ship, whale
-      (animated spout), shark, sea monster (new + classic), both big fish
-- [x] `-c` / `--classic` art selection throughout
-
-Deliberately not matched:
-
-- Timing is per-tick, paced by the ~10fps `poll` timeout, rather than
-  wall-clock scaled. This matches how Term::Animation advances per `animate()`
-  call, so the feel is the same, but it is not frame-rate independent.
+- Movement is per-tick, paced by the ~10fps `poll` timeout, rather than
+  wall-clock scaled. This matches how Term::Animation advances on each
+  `animate()` call, so the feel is the same, but it is not frame-rate
+  independent.
 - The seaweed lifetime is converted from the original's wall-clock seconds to
-  ticks at an assumed ten per second.
+  ticks, assuming ten per second.
+
+And one incidental gain: the original needs a curses library and so does not run
+on Windows, whereas `crossterm` is cross-platform.
+
+## Regenerating the art
+
+`src/art.rs` is generated from the reference Perl, not hand-written. See
+[`tools/`](tools/) to reproduce it.
