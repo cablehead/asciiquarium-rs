@@ -82,9 +82,9 @@ This is a port; essentially none of the creative work is mine.
 - **2003** -- `asciiquarium` created by **Kirk Baucom**, and still maintained at
   <https://robobunny.com/projects/asciiquarium/>. Version 1.1 (2013) is the one
   ported here.
-- **late 1990s** -- most of the ASCII art is by **Joan Stark** (`spunk1111`), a
-  giant of the ASCII art scene whose work dates from the height of the web-art
-  era.
+- **1996-2003** -- most of the ASCII art is by
+  **[Joan Stark](https://en.wikipedia.org/wiki/Joan_Stark)** (signed `jgs`, aka
+  `spunk1111`), a leading figure of the Usenet `alt.ascii.art` scene.
 - **~2011** -- the extra "new" fish and sea monster were drawn for the
   **Asciiquarium Live Wallpaper for Android**, then backported into the Perl by
   **Claudio Matsuoka**, whose GitHub repo became the canonical copy this port
