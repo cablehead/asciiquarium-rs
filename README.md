@@ -143,32 +143,6 @@ halfdelay(1);       # getch() waits at most 0.1s
 my $in = getch();   # a key, or nothing -> draw the next frame (~10 fps)
 ```
 
-## Perl quirks
-
-**Art lives in `q{...}` literals**, where `\\` means one backslash and `\}`
-means a brace. So the source is doubled up:
-
-```perl
-q{
-   \\        # a single backslash on screen
-  / \\
->=_('>
-}
-```
-
-Re-typing that by hand is a trap, so the port lets Perl unescape its own strings
-(see [`tools/`](tools/)).
-
-**A bug, kept on purpose.** The color picker is off by one:
-
-```perl
-my @c = ('c','C','r','R','y','Y','b','B','g','G','m','M');  # 12 colors
-$c[ int(rand($#c)) ];   # $#c is 11, not 12 -- so 'M' is never chosen
-```
-
-The port reproduces it, so the brightest magenta never shows up, just like the
-original.
-
 ## The Rust port
 
 No crate matches `Term::Animation`, so the engine is hand-rolled -- a few
@@ -178,9 +152,21 @@ hundred lines.
 blit into a flat cell buffer, back-to-front by depth, skipping transparent
 cells, and it flushes to the terminal once per frame.
 
-**The art is generated, not retyped.** Backslash-dense ASCII is a copying trap,
-so a Perl script in [`tools/`](tools/) evals the original's own string literals
-and emits them as Rust constants -- byte for byte.
+**The art is generated, not retyped.** The original stores its sprites right in
+the source, as `q{...}` string literals. A backslash escapes even there, so
+every `\` in the art is written `\\`:
+
+```perl
+q{
+   \\        # renders as one backslash
+  / \\
+>=_('>
+}
+```
+
+Copying those verbatim would double every backslash. So instead a script in
+[`tools/`](tools/) has Perl eval its own literals and emit them as Rust
+constants -- byte for byte.
 
 **The loop** is one `poll(100ms)`, serving as clock and keyboard at once, like
 `halfdelay`. It refits the scene the moment you resize, where the original only
@@ -192,6 +178,10 @@ Two things come out cleaner than the Perl:
   callback. The port collects new spawns and appends them after the frame.
 - **The terminal always resets.** A `Drop` guard restores raw mode on any exit
   -- normal, error, or panic -- instead of the Perl's trap-every-signal approach.
+
+It keeps the original's bugs, though: `rand($#c)` picks the last *index* (11) of
+a 12-color list instead of the count (12), so one color never appears -- and
+doesn't here either.
 
 And on `crossterm` rather than curses, it runs on Windows, which the original
 can't.
