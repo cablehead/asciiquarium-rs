@@ -1,7 +1,7 @@
 <h1 align="center">asciiquarium-rs</h1>
 
 <p align="center">
-  An aquarium animation in ASCII art, for your terminal -- a Rust port of Kirk
+  An aquarium animation in ASCII art for your terminal. A Rust port of Kirk
   Baucom's classic Perl
   <a href="https://robobunny.com/projects/asciiquarium/"><code>asciiquarium</code></a>
   (2003).
@@ -56,7 +56,7 @@
 ---
 
 The full cast: fish ([two art sets](#credit-and-lineage)) and their bubbles,
-seaweed, a castle, and a rotating headliner -- shark, ship, whale with a spout,
+seaweed, a castle, and a rotating headliner: shark, ship, whale with a spout,
 sea monster, or big fish. Pass `-c` for classic mode (the original art only).
 
 ## Build and run
@@ -87,7 +87,7 @@ Almost none of the creative work is mine.
   (2011); he then backported them into the Perl.
 
 This port follows Matsuoka's canonical copy,
-[cmatsuoka/asciiquarium](https://github.com/cmatsuoka/asciiquarium) -- which is
+[cmatsuoka/asciiquarium](https://github.com/cmatsuoka/asciiquarium), which is
 version 1.1.
 
 ## How the original works
@@ -96,9 +96,7 @@ The striking thing about the Perl is how little of it is animation code. Of its
 ~1500 lines, almost all are art strings and entity declarations; the engine
 itself is a separate module,
 [`Term::Animation`](https://metacpan.org/dist/Term-Animation) (also Baucom's),
-sitting on `Curses`. The script is really a scene description -- and this port
-collapses both layers, engine and curses, into one hand-rolled `crossterm`
-compositor.
+sitting on `Curses`. The script is really a scene description.
 
 **Color masks.** A sprite is a shape plus a same-shaped grid of color codes.
 Digits are palette slots, picked at random per spawn, so one drawing yields many
@@ -122,7 +120,7 @@ my %depth = (shark => 2, fish_start => 3, seaweed => 21, castle => 22);
 ```
 
 **Transparency.** Two characters don't draw, letting lower sprites through: space
-and `?` -- which is why the shark is full of them:
+and `?` (which is why the shark is full of them):
 
 ```
   ,??????????????????????????)   `\      # ? = water behind shows through
@@ -146,8 +144,8 @@ my $in = getch();   # a key, or nothing -> draw the next frame (~10 fps)
 
 ## The Rust port
 
-No crate matches `Term::Animation`, so the engine is hand-rolled -- a few
-hundred lines.
+No crate matches `Term::Animation`, so the engine is hand-rolled, a few hundred
+lines.
 
 **The compositor** does what `Term::Animation` and `Curses` did together: sprites
 blit into a flat cell buffer, back-to-front by depth, skipping transparent
@@ -167,7 +165,7 @@ q{
 
 Copying those verbatim would double every backslash. So instead a script in
 [`tools/`](tools/) has Perl eval its own literals and emit them as Rust
-constants -- byte for byte.
+constants, byte for byte.
 
 **The loop** is one `poll(100ms)`, serving as clock and keyboard at once, like
 `halfdelay`. It refits the scene the moment you resize, where the original only
@@ -178,10 +176,10 @@ Two things come out cleaner than the Perl:
 - **Respawns don't alias.** The original edits the live scene from inside a death
   callback. The port collects new spawns and appends them after the frame.
 - **The terminal always resets.** A `Drop` guard restores raw mode on any exit
-  -- normal, error, or panic -- instead of the Perl's trap-every-signal approach.
+  (normal, error, or panic) instead of the Perl's trap-every-signal approach.
 
 It keeps the original's bugs, though: `rand($#c)` picks the last *index* (11) of
-a 12-color list instead of the count (12), so one color never appears -- and
+a 12-color list instead of the count (12), so one color never appears, and it
 doesn't here either.
 
 And on `crossterm` rather than `Curses`, it runs on Windows, which the original
@@ -189,7 +187,7 @@ can't.
 
 ## License
 
-**GPL-2.0-or-later**, same as the original -- see [`LICENSE`](LICENSE).
+**GPL-2.0-or-later**, same as the original. See [`LICENSE`](LICENSE).
 
 This is a derivative work: it copies the original art verbatim, so it inherits
 the license and can't be relicensed. Copyright in the art and program stays with
