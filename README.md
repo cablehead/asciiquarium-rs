@@ -179,7 +179,8 @@ hundred lines across five files:
   [`tools/`](tools/). **`spawn.rs`** turns it into creatures and ports each
   `add_*`.
 - **`main.rs`** -- the loop. `poll(100ms)` is clock and input at once, like
-  `halfdelay`; resize and collisions live here.
+  `halfdelay`. Resizing refits the scene live -- the original only rebuilds when
+  you press `r`. Collisions run here too.
 
 Two things Rust handles more cleanly than the original:
 
@@ -189,18 +190,8 @@ Two things Rust handles more cleanly than the original:
 - **The terminal always resets.** A `Drop` guard restores raw mode on any exit
   -- normal, error, or panic -- replacing the Perl's trap-every-signal habit.
 
-## Differences from the original
-
-It's mostly faithful, down to the timing: movement and lifetimes advance once
-per loop, held near 10 fps by `poll(100ms)`, exactly as `Term::Animation` does
-(and, like it, not frame-rate independent).
-
-Three things differ:
-
-- **Live resize.** The scene refits the moment you resize the terminal. The
-  original ignores the resize signal and only rebuilds when you press `r`.
-- **Windows.** `crossterm` runs where curses can't.
-- **Command name.** `asciiquarium-rs`, to avoid clashing with the Perl one.
+Built on `crossterm` rather than curses, it also runs on Windows, which the
+original can't.
 
 ## License
 
