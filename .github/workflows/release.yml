@@ -1,0 +1,88 @@
+name: release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write   # create the release and upload assets
+
+jobs:
+  # Create the GitHub release once, up front.
+  create-release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag='${{ github.ref_name }}'
+          # prerelease if the tag has a suffix like -dev or -rc.1
+          flags=(--title "$tag" --verify-tag)
+          [[ "$tag" == *-* ]] && flags+=(--prerelease)
+          if [ -f "changes/$tag.md" ]; then
+            flags+=(--notes-file "changes/$tag.md")
+          else
+            flags+=(--generate-notes)
+          fi
+          gh release view "$tag" >/dev/null 2>&1 || gh release create "$tag" "${flags[@]}"
+
+  # Build each target on its own native runner and upload the asset.
+  build:
+    needs: create-release
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { runner: ubuntu-latest,    target: x86_64-unknown-linux-musl,  name: linux-amd64 }
+          - { runner: ubuntu-24.04-arm, target: aarch64-unknown-linux-musl, name: linux-arm64 }
+          - { runner: macos-latest,     target: aarch64-apple-darwin,       name: darwin-arm64 }
+          - { runner: macos-13,         target: x86_64-apple-darwin,        name: darwin-amd64 }
+          - { runner: windows-latest,   target: x86_64-pc-windows-msvc,     name: windows-amd64 }
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Rust
+        run: |
+          rustup update stable --no-self-update
+          rustup target add ${{ matrix.target }}
+
+      - name: Install musl tools
+        if: endsWith(matrix.target, '-musl')
+        run: sudo apt-get update && sudo apt-get install -y musl-tools
+
+      - name: Build
+        run: cargo build --release --locked --target ${{ matrix.target }}
+
+      - name: Package (unix)
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          dir="asciiquarium-rs-${{ github.ref_name }}-${{ matrix.name }}"
+          mkdir "$dir"
+          cp "target/${{ matrix.target }}/release/asciiquarium-rs" "$dir/"
+          cp README.md LICENSE "$dir/"
+          tar czf "$dir.tar.gz" "$dir"
+          sha256sum "$dir.tar.gz" > "$dir.tar.gz.sha256"
+          echo "ASSET=$dir.tar.gz" >> "$GITHUB_ENV"
+
+      - name: Package (windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $dir = "asciiquarium-rs-${{ github.ref_name }}-${{ matrix.name }}"
+          New-Item -ItemType Directory $dir | Out-Null
+          Copy-Item "target/${{ matrix.target }}/release/asciiquarium-rs.exe" $dir/
+          Copy-Item README.md, LICENSE $dir/
+          Compress-Archive -Path $dir -DestinationPath "$dir.zip"
+          (Get-FileHash "$dir.zip" -Algorithm SHA256).Hash.ToLower() + "  $dir.zip" |
+            Out-File -Encoding ascii "$dir.zip.sha256"
+          "ASSET=$dir.zip" >> $env:GITHUB_ENV
+
+      - name: Upload to release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: gh release upload "${{ github.ref_name }}" "$ASSET" "$ASSET.sha256" --clobber
