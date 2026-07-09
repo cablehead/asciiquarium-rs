@@ -9,7 +9,7 @@
 <p align="center">
   <a href="#build-and-run">Build &amp; run</a>
   &middot;
-  <a href="#how-the-original-pulls-it-off">How it works</a>
+  <a href="#how-the-original-works">How the original works</a>
   &middot;
   <a href="#the-rust-port">The Rust port</a>
   &middot;
@@ -54,186 +54,156 @@
 
 ---
 
-The whole cast is here: the water surface, the castle, swaying seaweed, both
-fish art sets and their air bubbles, sharks (with the biting "teeth" and a
-splat), ships, whales with an animated spout, sea monsters (new and classic),
-and both big fish -- all fed by the roaming-special chain, with a `-c` classic
-mode. It matches the reference; the handful of intentional differences are noted
-at the end.
+The full cast: fish (two art sets) and their bubbles, seaweed, a castle, and a
+rotating headliner -- shark, ship, whale with a spout, sea monster, or big fish.
+Pass `-c` for classic mode (the original art only).
 
 ## Build and run
 
 ```
-cargo install asciiquarium-rs  # installs the `asciiquarium-rs` command
-cargo run                      # or, from a checkout: swim
-cargo run -- --classic         # classic mode: original art set only (-c works too)
+cargo install asciiquarium-rs   # command is `asciiquarium-rs`
+cargo run                       # or run from a checkout
+cargo run -- --classic          # classic art set (-c works too)
 ```
 
-The crate is `asciiquarium-rs` and its command is `asciiquarium-rs`, so it sits
-alongside the Perl original (whose command is `asciiquarium`) without clashing.
+Keys: `q` quit, `p` pause, `r` rebuild. The scene refits when you resize.
 
-Controls: `q` quit, `p` pause, `r` rebuild the scene. Resize the terminal and
-the scene rebuilds to fit.
+The command is `asciiquarium-rs`, not `asciiquarium`, so it won't clash with the
+Perl original if you have both.
 
 ## Credit and lineage
 
-This is a port; essentially none of the creative work is mine.
+Almost none of the creative work here is mine.
 
-- **2003** -- `asciiquarium` created by **Kirk Baucom**, and still maintained at
-  <https://robobunny.com/projects/asciiquarium/>. Version 1.1 (2013) is the one
-  ported here.
-- **1996-2003** -- most of the ASCII art is by
-  **[Joan Stark](https://en.wikipedia.org/wiki/Joan_Stark)** (signed `jgs`, aka
-  `spunk1111`), a leading figure of the Usenet `alt.ascii.art` scene.
-- **~2011** -- the extra "new" fish and sea monster were drawn for the
-  **Asciiquarium Live Wallpaper for Android**, then backported into the Perl by
-  **Claudio Matsuoka**, whose GitHub repo became the canonical copy this port
-  follows: <https://github.com/cmatsuoka/asciiquarium>
+- **2003** -- `asciiquarium` by **Kirk Baucom**, still at
+  [robobunny.com](https://robobunny.com/projects/asciiquarium/). This port
+  follows version 1.1.
+- **1996-2003** -- most of the art is by
+  **[Joan Stark](https://en.wikipedia.org/wiki/Joan_Stark)** (`jgs`, aka
+  `spunk1111`) of the Usenet `alt.ascii.art` scene.
+- **~2011** -- the "new" fish and sea monster came from the Asciiquarium Live
+  Wallpaper for Android, backported to Perl by **Claudio Matsuoka**, whose
+  [repo](https://github.com/cmatsuoka/asciiquarium) is the copy this port
+  follows.
 - **2026** -- this Rust port.
 
-The original is licensed GPL-2.0-or-later, and so is this port.
+## How the original works
 
-## How the original pulls it off
+The Perl is mostly art strings and entity declarations. The animation engine is
+a separate module, [`Term::Animation`](https://metacpan.org/dist/Term-Animation)
+(also Baucom's), built on `Curses`. This port replaces both with one hand-rolled
+`crossterm` compositor.
 
-Reading the Perl, the surprising thing is how little of it is animation code.
-Almost the entire ~1500 lines are two things: piles of ASCII-art strings, and
-entity declarations. The actual engine lives in a CPAN module,
-[`Term::Animation`](https://metacpan.org/dist/Term-Animation) -- which Kirk
-Baucom wrote himself (CPAN id `KBAUCOM`), factoring the sprite machinery out of
-his own aquarium into a reusable "ASCII sprite animation framework" first
-released in 2003 and last updated (v2.6) in 2011. It in turn requires `Curses`,
-the XS binding to the C curses library -- which is why the original only runs
-where curses exists. So the script is really a *scene description* driving
-Baucom's engine, and the interesting mechanics are in how that description is
-encoded. (This port therefore replaces two layers at once: Term::Animation's
-sprite/z-depth/collision model and curses underneath it, both collapsed into the
-hand-rolled `crossterm` compositor.) A few highlights:
+Five ideas carry the whole thing.
 
-- **Color masks.** Every sprite has a shape and a second text block of the same
-  layout -- the mask -- where each character picks the color of the shape cell
-  at the same row/column. The fish mask uses digits as a numbered palette:
-  `1` body, `2` dorsal fin, `3` flippers, `4` eye, `5` mouth, `6` tailfin,
-  `7` gills. At spawn time each digit is swapped for a random color, so every
-  fish is uniquely colored from the same art. The eye is always forced white.
+**Color masks.** A sprite is a shape plus a same-shaped grid of color codes.
+Digits are palette slots, picked at random per spawn, so one drawing yields many
+fish:
 
-- **Depth as a number, painter's algorithm.** A `%depth` table assigns every
-  kind of object a z value; lower z draws on top. Bubbles sit one z above their
-  fish so they always render in front; fish occupy a whole band of z values so
-  they overlap plausibly.
+```
+ shape     mask
+    \        2
+   / \      1 1
+ >=_('>    661745
+   \_/      111
+    /        3
 
-- **Transparency for free.** Spaces in a sprite do not overwrite what is behind
-  them, so a fish drawn over the castle just works without any per-sprite
-  masking beyond the shape itself.
+ 1 body   2 fin   3 flippers   4 eye (forced white)   5 mouth   6 tail   7 gills
+```
 
-- **Lifecycles via callbacks.** Entities can die off-screen, after a frame
-  count, or at a wall-clock time, and each carries a `death_cb` that spawns its
-  own replacement. That is the whole trick to a screen that stays populated
-  forever: a fish that swims off the edge calls `add_fish` on its way out. The
-  single roaming "special" (ship / whale / shark / ...) works the same way --
-  its death callback picks a new random special, so there is always exactly one.
+**Depth.** A table gives each kind a z; lower z draws on top.
 
-- **The frame clock is the input reader.** `halfdelay(1)` makes `getch()` block
-  for at most a tenth of a second. That one call both reads a keystroke and
-  paces the animation to ~10fps: if no key arrives in 100ms, the loop just
-  advances a frame.
+```perl
+my %depth = (shark => 2, fish_start => 3, seaweed => 21, castle => 22);
+```
 
-## Interesting Perl-isms encountered
+**Transparency.** Blanks let lower sprites show through. Space is one; `?` is the
+other, which is why the shark is full of them:
 
-- **`q{...}` and `q#...#` literals.** The art is written in Perl's
-  single-quote-style literals with arbitrary delimiters. Inside them `\\` is a
-  literal backslash and `\}` escapes the delimiter -- which matters, because the
-  fish art is *full* of backslashes. Getting the art across faithfully is the
-  single biggest correctness hazard in the port.
+```
+  ,??????????????????????????)   `\      # ? = water behind shows through
+```
 
-- **`$#array` vs `scalar(@array)`.** The color picker reads
-  `$colors[int(rand($#colors))]`. `$#colors` is the last *index* (11), not the
-  count (12), so `rand` never reaches the final palette entry -- the brightest
-  magenta is silently unreachable. A tiny latent bug preserved in amber.
+**Entities respawn themselves.** Each carries a death callback that adds its
+replacement, so the tank never empties:
 
-- **Parallel arrays coupled by index.** Shapes and masks live in separate
-  arrays, paired by `$i` and `$i+1`. It works, but it is fragile; the port folds
-  each pair into one struct.
+```perl
+death_cb => \&add_fish,   # a fish that leaves spawns another
+```
 
-- **`?` is transparency, not a glyph.** The shark, sea monster, and big fish art
-  is speckled with `?`. It never renders: `?` is Term::Animation's default
-  transparency character, so those cells let the water behind show through.
-  Entities with `auto_trans` additionally treat spaces as transparent. Miss this
-  and every shark swims inside a box of question marks.
+The rotating headliner works the same way, so there's always exactly one.
 
-- **Signal paranoia.** The original installs a handler on *every* signal it can,
-  specifically so a stray signal can never leave your terminal in raw mode. The
-  Rust port gets the same guarantee structurally (see below).
+**One call is both clock and keyboard:**
+
+```perl
+halfdelay(1);       # getch() waits at most 0.1s
+my $in = getch();   # a key, or nothing -> draw the next frame (~10 fps)
+```
+
+## Perl worth a second look
+
+**Art lives in `q{...}` literals**, where `\\` means one backslash and `\}`
+means a brace. So the source is doubled up:
+
+```perl
+q{
+   \\        # a single backslash on screen
+  / \\
+>=_('>
+}
+```
+
+Re-typing that by hand is a trap, so the port lets Perl unescape its own strings
+(see [`tools/`](tools/)).
+
+**A bug, kept on purpose.** The color picker is off by one:
+
+```perl
+my @c = ('c','C','r','R','y','Y','b','B','g','G','m','M');  # 12 colors
+$c[ int(rand($#c)) ];   # $#c is 11, not 12 -- so 'M' is never chosen
+```
+
+The port reproduces it, so the brightest magenta never shows up, just like the
+original.
 
 ## The Rust port
 
-No crate mirrors `Term::Animation` (the nearest, `gemini-engine`, is a general
-ASCII renderer with a different model), so the engine is hand-rolled. It is
-small and the interesting parts are:
+No crate matches `Term::Animation`, so the engine is hand-rolled -- a few
+hundred lines across five files:
 
-- **`src/render.rs` -- the compositor.** A flat `Vec<Cell>` shadow buffer. Each
-  frame: clear it, blit every entity back-to-front (z sorted descending), and
-  flush to stdout in a single pass that emits a color escape only when the run
-  color changes. Space-transparency and the shape/mask alignment live here, in
-  about 40 lines of `blit`.
+- **`render.rs`** -- the compositor. Sprites blit into a `Vec<Cell>` sorted by
+  depth, skipping transparent cells; one write to the terminal per frame.
+- **`entity.rs`** -- sprites: multi-frame shape+mask, fractional velocity, three
+  ways to die (off-screen, frame count, deadline).
+- **`art.rs`** -- the art, generated byte-exact from the Perl by
+  [`tools/`](tools/). **`spawn.rs`** turns it into creatures and ports each
+  `add_*`.
+- **`main.rs`** -- the loop. `poll(100ms)` is clock and input at once, like
+  `halfdelay`; resize and collisions live here.
 
-- **`src/entity.rs` -- the entity model.** Multi-frame sprites (a `Frame` bundles
-  shape + mask so they can never drift out of sync), fractional per-tick
-  velocity so fish move at sub-cell speeds, three ways to die (off-screen, a
-  frame count, a deadline tick), and a `?`/`auto_trans` transparency test.
-  `resolve_fish_mask` reproduces the Perl's per-digit random coloring exactly,
-  eye-forced-white and off-by-one bug and all.
+Two things Rust handles more cleanly than the original:
 
-- **`src/art.rs` -- generated, byte-exact art.** Rather than retype the
-  backslash-dense art by hand, a small Perl script (`tools/`) re-reads the
-  reference and evals each `q{...}` / `"..."` literal so Perl itself does the
-  de-escaping, then emits this file as raw-string constants.
-  `src/spawn.rs` groups those into creatures and ports each `add_*` spawner.
-
-- **`src/main.rs` -- the loop and collisions.** `crossterm::event::poll(100ms)`
-  is the direct analog of `halfdelay(1)`: one call that is both the input read
-  and the frame clock. `Event::Resize` comes through the same stream, so live
-  resize is free -- an improvement over the original, which ignores `SIGWINCH`
-  and only reacts on `r`. Collisions are a per-frame cell-overlap pass over the
-  physical entities (bubbles vs. the waterline, small fish vs. shark teeth).
-
-- **`death_cb` without shared mutable state.** The Perl mutates the live
-  animation from inside a callback mid-iteration. Rust's borrow checker would
-  fight that, and it is genuinely error-prone, so `advance()` instead collects
-  spawn requests into a `Vec` during the pass and appends them after -- same
-  behavior, no aliasing. The single roaming special keeps itself alive this
-  way: each one's death spawns the next.
-
-- **A `TerminalGuard` with a `Drop` impl** restores raw mode and the alternate
-  screen no matter how the program leaves -- normal exit, `?` early-return, or
-  panic. That is the structural version of the original's install-every-signal
-  paranoia: you cannot forget to clean up, because cleanup is tied to the value
-  going out of scope.
+- **Respawns don't alias.** The Perl edits the live scene from inside a
+  callback. The port collects new spawns and appends them after the frame
+  instead.
+- **The terminal always resets.** A `Drop` guard restores raw mode on any exit
+  -- normal, error, or panic -- replacing the Perl's trap-every-signal habit.
 
 ## Differences from the original
 
-One intentional departure: everything is paced by ticks, not a wall clock.
-Movement, frame cycling, and lifetimes (a seaweed strand's several-minute
-lifespan included) all advance once per loop iteration, which the ~10fps `poll`
-timeout keeps near ten per second. This mirrors how Term::Animation advances on
-each `animate()` call, so the feel is identical -- but it is not frame-rate
-independent: if the loop ran at a different rate, the whole aquarium would speed
-up or slow down with it.
+Timing is tick-based, not wall-clock. Movement, frame changes, and lifetimes all
+advance once per loop, which `poll(100ms)` holds near 10 fps. This matches
+`Term::Animation`, so the feel is the same -- but it isn't frame-rate
+independent: run the loop faster or slower and the whole tank does too.
 
-And one incidental gain: the original needs a curses library and so does not run
-on Windows, whereas `crossterm` is cross-platform.
-
-## Regenerating the art
-
-`src/art.rs` is generated from the reference Perl, not hand-written. See
-[`tools/`](tools/) to reproduce it.
+One bonus: the original needs curses and won't run on Windows; `crossterm` is
+cross-platform.
 
 ## License
 
-**GPL-2.0-or-later**, the same as the original -- see [`LICENSE`](LICENSE).
+**GPL-2.0-or-later**, same as the original -- see [`LICENSE`](LICENSE).
 
-This is a derivative work. It reproduces the original ASCII art verbatim and
-follows the structure of Kirk Baucom's `asciiquarium` (copyright (C) 2003, GPL
-v2 or later), so it inherits that license; it cannot be relicensed. The
-copyright in the art and the original program stays with its authors (Kirk
-Baucom, Joan Stark, Claudio Matsuoka); this port only adds the Rust
-implementation, offered under the same terms.
+This is a derivative work: it copies the original art verbatim, so it inherits
+the license and can't be relicensed. Copyright in the art and program stays with
+Kirk Baucom, Joan Stark, and Claudio Matsuoka; this port adds only the Rust code,
+under the same terms.
