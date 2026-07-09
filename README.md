@@ -91,10 +91,13 @@ version 1.1.
 
 ## How the original works
 
-The Perl is mostly art strings and entity declarations. The animation engine is
-a separate module, [`Term::Animation`](https://metacpan.org/dist/Term-Animation)
-(also Baucom's), built on `Curses`. This port replaces both with one hand-rolled
-`crossterm` compositor.
+The striking thing about the Perl is how little of it is animation code. Of its
+~1500 lines, almost all are art strings and entity declarations; the engine
+itself is a separate module,
+[`Term::Animation`](https://metacpan.org/dist/Term-Animation) (also Baucom's),
+sitting on `Curses`. The script is really a scene description -- and this port
+collapses both layers, engine and curses, into one hand-rolled `crossterm`
+compositor.
 
 **Color masks.** A sprite is a shape plus a same-shaped grid of color codes.
 Digits are palette slots, picked at random per spawn, so one drawing yields many
