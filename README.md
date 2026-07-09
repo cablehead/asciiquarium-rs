@@ -73,19 +73,21 @@ Perl original if you have both.
 
 ## Credit and lineage
 
-Almost none of the creative work here is mine.
+Almost none of the creative work is mine.
 
-- **2003** -- `asciiquarium` by **Kirk Baucom**, still at
-  [robobunny.com](https://robobunny.com/projects/asciiquarium/). This port
-  follows version 1.1.
-- **1996-2003** -- most of the art is by
-  **[Joan Stark](https://en.wikipedia.org/wiki/Joan_Stark)** (`jgs`, aka
-  `spunk1111`) of the Usenet `alt.ascii.art` scene.
-- **~2011** -- the "new" fish and sea monster came from the Asciiquarium Live
-  Wallpaper for Android, backported to Perl by **Claudio Matsuoka**, whose
-  [repo](https://github.com/cmatsuoka/asciiquarium) is the copy this port
-  follows.
-- **2026** -- this Rust port.
+- **Kirk Baucom** wrote `asciiquarium` (2003) and the engine under it,
+  `Term::Animation`. Still online at
+  [robobunny.com](https://robobunny.com/projects/asciiquarium/).
+- **[Joan Stark](https://en.wikipedia.org/wiki/Joan_Stark)** (`jgs`, aka
+  `spunk1111`) drew most of the art, during her run on Usenet's `alt.ascii.art`
+  from 1996 to 2003.
+- **Claudio Matsuoka** added the "new" fish and sea monster. They first appeared
+  in his [Asciiquarium Live Wallpaper for Android](https://archive.org/details/org.helllabs.android.asciiquarium)
+  (2011); he then backported them into the Perl.
+
+This port follows Matsuoka's canonical copy,
+[cmatsuoka/asciiquarium](https://github.com/cmatsuoka/asciiquarium) -- which is
+version 1.1.
 
 ## How the original works
 
