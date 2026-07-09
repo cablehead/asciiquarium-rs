@@ -1,5 +1,5 @@
 [package]
-name = "asciiquarium"
+name = "asciiquarium-rs"
 version = "0.1.0-dev"
 edition = "2021"
 description = "An aquarium animation in ASCII art, ported to Rust"
@@ -10,8 +10,15 @@ homepage = "https://github.com/cablehead/asciiquarium-rs"
 keywords = ["ascii", "animation", "aquarium", "terminal", "tui"]
 categories = ["command-line-utilities", "games"]
 
-[[bin]]
+# Internal library name stays short so `use asciiquarium::...` is unchanged.
+[lib]
 name = "asciiquarium"
+path = "src/lib.rs"
+
+# The installed command is `asciiquarium-rs`, to avoid colliding with the Perl
+# original (whose command is `asciiquarium`).
+[[bin]]
+name = "asciiquarium-rs"
 path = "src/main.rs"
 
 [dependencies]

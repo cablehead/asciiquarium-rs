@@ -64,9 +64,13 @@ at the end.
 ## Build and run
 
 ```
-cargo run               # swim
-cargo run -- --classic  # classic mode: original art set only (-c also works)
+cargo install asciiquarium-rs  # installs the `asciiquarium-rs` command
+cargo run                      # or, from a checkout: swim
+cargo run -- --classic         # classic mode: original art set only (-c works too)
 ```
+
+The crate is `asciiquarium-rs` and its command is `asciiquarium-rs`, so it sits
+alongside the Perl original (whose command is `asciiquarium`) without clashing.
 
 Controls: `q` quit, `p` pause, `r` rebuild the scene. Resize the terminal and
 the scene rebuilds to fit.
