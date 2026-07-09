@@ -75,7 +75,7 @@ Perl original if you have both.
 
 Almost none of the creative work is mine.
 
-- **Kirk Baucom** wrote `asciiquarium` (2003) and the engine under it,
+- **Kirk Baucom** wrote `asciiquarium` (2003) in Perl, and the engine under it,
   `Term::Animation`. Still online at
   [robobunny.com](https://robobunny.com/projects/asciiquarium/).
 - **[Joan Stark](https://en.wikipedia.org/wiki/Joan_Stark)** (`jgs`, aka
