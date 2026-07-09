@@ -211,14 +211,13 @@ small and the interesting parts are:
 
 ## Differences from the original
 
-Two intentional departures, both about timing:
-
-- Movement is per-tick, paced by the ~10fps `poll` timeout, rather than
-  wall-clock scaled. This matches how Term::Animation advances on each
-  `animate()` call, so the feel is the same, but it is not frame-rate
-  independent.
-- The seaweed lifetime is converted from the original's wall-clock seconds to
-  ticks, assuming ten per second.
+One intentional departure: everything is paced by ticks, not a wall clock.
+Movement, frame cycling, and lifetimes (a seaweed strand's several-minute
+lifespan included) all advance once per loop iteration, which the ~10fps `poll`
+timeout keeps near ten per second. This mirrors how Term::Animation advances on
+each `animate()` call, so the feel is identical -- but it is not frame-rate
+independent: if the loop ran at a different rate, the whole aquarium would speed
+up or slow down with it.
 
 And one incidental gain: the original needs a curses library and so does not run
 on Windows, whereas `crossterm` is cross-platform.
