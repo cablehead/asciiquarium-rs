@@ -55,7 +55,7 @@
 
 ---
 
-The full cast: fish ([two art sets](#credit-and-lineage)) and their bubbles,
+The full cast: fish ([both art sets](#credit-and-lineage)) and their bubbles,
 seaweed, a castle, and a rotating headliner: shark, ship, whale with a spout,
 sea monster, or big fish. Pass `-c` for classic mode (the original art only).
 
