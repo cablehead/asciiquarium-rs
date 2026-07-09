@@ -5,6 +5,10 @@ edition = "2021"
 description = "An aquarium animation in ASCII art, ported to Rust"
 license = "GPL-2.0-or-later"
 readme = "README.md"
+repository = "https://github.com/cablehead/asciiquarium-rs"
+homepage = "https://github.com/cablehead/asciiquarium-rs"
+keywords = ["ascii", "animation", "aquarium", "terminal", "tui"]
+categories = ["command-line-utilities", "games"]
 
 [[bin]]
 name = "asciiquarium"
