@@ -25,6 +25,8 @@ use asciiquarium::{entity, render, spawn};
 
 use std::collections::{HashMap, HashSet};
 use std::io::{self, Write};
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
 use std::time::Duration;
 
 use clap::Parser;
@@ -54,6 +56,17 @@ fn main() -> io::Result<()> {
 }
 
 fn run(out: &mut impl Write, classic: bool) -> io::Result<()> {
+    // A termination signal (SIGTERM/SIGHUP) or the console window closing sets
+    // this flag; the loop then returns normally so the TerminalGuard's Drop runs
+    // and restores the terminal. (Ctrl-C arrives as a key and is handled below.)
+    // ctrlc abstracts the per-platform signal vs console-handler details.
+    let terminate = Arc::new(AtomicBool::new(false));
+    {
+        let terminate = Arc::clone(&terminate);
+        ctrlc::set_handler(move || terminate.store(true, Ordering::Relaxed))
+            .map_err(io::Error::other)?;
+    }
+
     let mut rng = rand::thread_rng();
     let (mut w, mut h) = terminal::size()?;
     let mut screen = render::Screen::new(w, h);
@@ -62,6 +75,12 @@ fn run(out: &mut impl Write, classic: bool) -> io::Result<()> {
     let mut paused = false;
 
     loop {
+        // A caught signal (SIGTERM, SIGHUP, ...) exits via the guard. Only an
+        // uncatchable SIGKILL can skip cleanup.
+        if terminate.load(Ordering::Relaxed) {
+            return Ok(());
+        }
+
         // poll() is both the input reader and the ~10fps frame clock: it blocks
         // up to 100ms for an event, exactly like the original's halfdelay(1).
         if event::poll(Duration::from_millis(100))? {

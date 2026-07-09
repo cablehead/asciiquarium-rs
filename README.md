@@ -175,8 +175,10 @@ Two things come out cleaner than the Perl:
 
 - **Respawns don't alias.** The original edits the live scene from inside a death
   callback. The port collects new spawns and appends them after the frame.
-- **The terminal always resets.** A `Drop` guard restores raw mode on any exit
-  (normal, error, or panic) instead of the Perl's trap-every-signal approach.
+- **The terminal always resets.** A `Drop` guard restores raw mode on normal
+  exit, errors, and panics. A `ctrlc` handler routes `SIGTERM`, `SIGHUP`, and a
+  closing console window into that same graceful exit, so those clean up too.
+  Only an uncatchable `SIGKILL` (`kill -9`) can slip past.
 
 It keeps the original's bugs, though: `rand($#c)` picks the last *index* (11) of
 a 12-color list instead of the count (12), so one color never appears, and it

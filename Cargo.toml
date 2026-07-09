@@ -24,6 +24,9 @@ path = "src/main.rs"
 [dependencies]
 clap = { version = "4", features = ["derive"] }
 crossterm = "0.28"
+# `termination` also catches SIGTERM/SIGHUP and the Windows console closing, not
+# just Ctrl-C, so those exit gracefully and run the terminal guard's Drop.
+ctrlc = { version = "3", features = ["termination"] }
 rand = "0.8"
 
 [profile.release]
