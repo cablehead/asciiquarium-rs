@@ -191,13 +191,16 @@ Two things Rust handles more cleanly than the original:
 
 ## Differences from the original
 
-Timing is tick-based, not wall-clock. Movement, frame changes, and lifetimes all
-advance once per loop, which `poll(100ms)` holds near 10 fps. This matches
-`Term::Animation`, so the feel is the same -- but it isn't frame-rate
-independent: run the loop faster or slower and the whole tank does too.
+It's mostly faithful, down to the timing: movement and lifetimes advance once
+per loop, held near 10 fps by `poll(100ms)`, exactly as `Term::Animation` does
+(and, like it, not frame-rate independent).
 
-One bonus: the original needs curses and won't run on Windows; `crossterm` is
-cross-platform.
+Three things differ:
+
+- **Live resize.** The scene refits the moment you resize the terminal. The
+  original ignores the resize signal and only rebuilds when you press `r`.
+- **Windows.** `crossterm` runs where curses can't.
+- **Command name.** `asciiquarium-rs`, to avoid clashing with the Perl one.
 
 ## License
 
