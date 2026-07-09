@@ -1,6 +1,6 @@
 # tools
 
-Art extraction for the port. `src/art.rs` is generated, not hand-written -- the
+Art extraction for the port. `src/art.rs` is generated, not hand-written. The
 original art is backslash-dense and error-prone to retype, so we let Perl
 de-escape its own literals.
 

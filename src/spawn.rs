@@ -1,7 +1,7 @@
 //! Spawners: the port of the original's `add_*` subroutines.
 //!
-//! Each function builds one creature (sometimes several entities -- the shark
-//! and its collision "teeth") from the byte-exact art in `art`. Positions,
+//! Each function builds one creature (sometimes several entities, like the
+//! shark and its collision "teeth") from the byte-exact art in `art`. Positions,
 //! speeds, depths, and the new/classic art selection follow the Perl.
 
 use crossterm::style::Color;

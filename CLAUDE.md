@@ -32,13 +32,13 @@ A Rust port of the classic `asciiquarium` Perl script (see README.md for full
 attribution). The Perl leans entirely on the `Term::Animation` CPAN module;
 there is no Rust equivalent, so the engine is hand-rolled here:
 
-- `src/render.rs` -- the compositor: a `Vec<Cell>` shadow buffer, z-sorted
+- `src/render.rs` is the compositor: a `Vec<Cell>` shadow buffer, z-sorted
   painter's-algorithm blit with space-transparency, flushed once per frame.
-- `src/entity.rs` -- the entity model: multi-frame sprites, parallel color
+- `src/entity.rs` is the entity model: multi-frame sprites, parallel color
   masks, fractional per-tick velocity, off-screen death.
-- `src/art.rs` -- ASCII art transcribed from the original. Use raw strings
+- `src/art.rs` is ASCII art transcribed from the original. Use raw strings
   (`r"..."`); re-check every backslash against a running copy of the Perl.
-- `src/main.rs` -- CLI (clap), the crossterm event loop (which is also the
+- `src/main.rs` has the CLI (clap), the crossterm event loop (which is also the
   frame clock), and the `add_*`-style spawners.
 
 ### Porting notes
@@ -47,6 +47,6 @@ there is no Rust equivalent, so the engine is hand-rolled here:
   together in a single `Frame` here.
 - `death_cb` in the Perl re-spawns replacements by mutating the animation
   mid-iteration. Here, `tick()` collects spawn requests into a `Vec` and appends
-  them after the pass -- do not mutate the entity list while iterating it.
+  them after the pass. Do not mutate the entity list while iterating it.
 - Lower z draws on top (painter's algorithm sorts z descending). This matches
   the original's `%depth` semantics; do not invert it.

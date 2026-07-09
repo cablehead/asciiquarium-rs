@@ -1,4 +1,4 @@
-// asciiquarium-rs -- an aquarium animation in ASCII art.
+// asciiquarium-rs: an aquarium animation in ASCII art.
 //
 // A Rust port (2026) of asciiquarium, whose art is mostly by Joan Stark with
 // later additions backported by Claudio Matsuoka.

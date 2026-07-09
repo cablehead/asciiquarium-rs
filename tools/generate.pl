@@ -29,7 +29,7 @@ while ($txt =~ /===SUB (\S+) #(\d+)===\n(.*?)\n===END===\n/gs) {
 }
 
 print <<'HEADER';
-// @generated from the reference Perl by tools/generate.pl -- do not edit.
+// @generated from the reference Perl by tools/generate.pl. Do not edit.
 //
 // This ASCII art is the creative work of the original asciiquarium: mostly by
 // Joan Stark, with later additions by Claudio Matsuoka, distributed under the

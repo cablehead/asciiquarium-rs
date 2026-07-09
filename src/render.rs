@@ -53,9 +53,9 @@ impl Screen {
 
     /// Blit one sprite frame at (x, y). `shape` and `mask` are line-aligned:
     /// the mask char at the same row/col picks the color, falling back to
-    /// `default` where the mask is blank. A shape char is transparent -- lets
-    /// whatever a lower-z entity wrote show through -- when it equals `trans`
-    /// (or is a space and `auto_trans` is set). This is the whole trick behind
+    /// `default` where the mask is blank. A shape char is transparent when it
+    /// equals `trans` (or is a space and `auto_trans` is set), letting whatever
+    /// a lower-z entity wrote show through. This is the whole trick behind
     /// fish swimming "in front of" the castle.
     #[allow(clippy::too_many_arguments)]
     pub fn blit(

@@ -55,7 +55,7 @@ pub enum EntityType {
     Splat,
 }
 
-/// What to spawn when this entity dies -- the port of Term::Animation's
+/// What to spawn when this entity dies, the port of Term::Animation's
 /// `death_cb`. The tick loop interprets these after removing the corpse.
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum OnDeath {
