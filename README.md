@@ -3,7 +3,8 @@
 <p align="center">
   An aquarium animation in ASCII art, for your terminal -- a Rust port of Kirk
   Baucom's classic Perl
-  <a href="https://robobunny.com/projects/asciiquarium/"><code>asciiquarium</code></a>.
+  <a href="https://robobunny.com/projects/asciiquarium/"><code>asciiquarium</code></a>
+  (2003).
 </p>
 
 <p align="center">
@@ -136,7 +137,7 @@ death_cb => \&add_fish,   # a fish that leaves spawns another
 
 The rotating headliner works the same way, so there's always exactly one.
 
-**One call is both clock and keyboard:**
+**One call is both clock and keyboard** ([`halfdelay`](https://github.com/cmatsuoka/asciiquarium/blob/8bdb7d441a36a5a9f64b853317a66f9d4a82f08f/asciiquarium#L102)):
 
 ```perl
 halfdelay(1);       # getch() waits at most 0.1s
@@ -148,7 +149,7 @@ my $in = getch();   # a key, or nothing -> draw the next frame (~10 fps)
 No crate matches `Term::Animation`, so the engine is hand-rolled -- a few
 hundred lines.
 
-**The compositor** does what Term::Animation and curses did together: sprites
+**The compositor** does what `Term::Animation` and `Curses` did together: sprites
 blit into a flat cell buffer, back-to-front by depth, skipping transparent
 cells, and it flushes to the terminal once per frame.
 
@@ -183,7 +184,7 @@ It keeps the original's bugs, though: `rand($#c)` picks the last *index* (11) of
 a 12-color list instead of the count (12), so one color never appears -- and
 doesn't here either.
 
-And on `crossterm` rather than curses, it runs on Windows, which the original
+And on `crossterm` rather than `Curses`, it runs on Windows, which the original
 can't.
 
 ## License
