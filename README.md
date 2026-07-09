@@ -96,8 +96,6 @@ a separate module, [`Term::Animation`](https://metacpan.org/dist/Term-Animation)
 (also Baucom's), built on `Curses`. This port replaces both with one hand-rolled
 `crossterm` compositor.
 
-Five ideas carry the whole thing.
-
 **Color masks.** A sprite is a shape plus a same-shaped grid of color codes.
 Digits are palette slots, picked at random per spawn, so one drawing yields many
 fish:
