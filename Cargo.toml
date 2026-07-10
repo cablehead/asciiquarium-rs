@@ -1,6 +1,6 @@
 [package]
 name = "asciiquarium-rs"
-version = "0.1.0"
+version = "0.1.1-dev"
 edition = "2021"
 description = "An aquarium animation in ASCII art, ported to Rust"
 license = "GPL-2.0-or-later"
