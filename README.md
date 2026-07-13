@@ -8,7 +8,7 @@
 </p>
 
 <p align="center">
-  <a href="#build-and-run">Build &amp; run</a>
+  <a href="#install">Install</a>
   &middot;
   <a href="#credit-and-lineage">Credits</a>
   &middot;
@@ -59,18 +59,35 @@ The full cast: fish ([both art sets](#credit-and-lineage)) and their bubbles,
 seaweed, a castle, and a rotating headliner: shark, ship, whale with a spout,
 sea monster, or big fish. Pass `-c` for classic mode (the original art only).
 
-## Build and run
+## Install
+
+Prebuilt binaries for Linux, macOS, and Windows are on the
+[releases page](https://github.com/cablehead/asciiquarium-rs/releases/latest).
+Grab one with [`eget`](https://github.com/zyedidia/eget):
 
 ```
-cargo install asciiquarium-rs   # command is `asciiquarium-rs`
-cargo run                       # or run from a checkout
-cargo run -- --classic          # classic art set (-c works too)
+eget cablehead/asciiquarium-rs
 ```
+
+Or from crates.io:
+
+```
+cargo install asciiquarium-rs
+```
+
+The installed command is `asciiquarium-rs`, not `asciiquarium`, so it won't clash
+with the Perl original if you have both.
+
+## Run
+
+```
+asciiquarium-rs             # swim
+asciiquarium-rs --classic   # classic art set (-c works too)
+```
+
+From a checkout, use `cargo run` in place of the command.
 
 Keys: `q` quit, `p` pause, `r` rebuild. The scene refits when you resize.
-
-The command is `asciiquarium-rs`, not `asciiquarium`, so it won't clash with the
-Perl original if you have both.
 
 ## Credit and lineage
 
