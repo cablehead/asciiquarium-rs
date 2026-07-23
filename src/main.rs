@@ -25,9 +25,10 @@ use asciiquarium::{entity, render, spawn};
 
 use std::collections::{HashMap, HashSet};
 use std::io::{self, Write};
+use std::num::NonZeroU64;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use clap::Parser;
 use crossterm::{
@@ -47,15 +48,34 @@ struct Cli {
     /// Classic mode: use the original art set only.
     #[arg(short = 'c', long)]
     classic: bool,
+
+    /// Exit after this many seconds.
+    #[arg(long, value_name = "SECONDS")]
+    duration_seconds: Option<NonZeroU64>,
+
+    /// Exit on any key instead of reserving keys for controls.
+    #[arg(long)]
+    exit_on_any_key: bool,
 }
 
 fn main() -> io::Result<()> {
     let cli = Cli::parse();
     let mut term = TerminalGuard::enter()?;
-    run(&mut term.out, cli.classic)
+    run(
+        &mut term.out,
+        cli.classic,
+        cli.duration_seconds
+            .map(|seconds| Duration::from_secs(seconds.get())),
+        cli.exit_on_any_key,
+    )
 }
 
-fn run(out: &mut impl Write, classic: bool) -> io::Result<()> {
+fn run(
+    out: &mut impl Write,
+    classic: bool,
+    duration: Option<Duration>,
+    exit_on_any_key: bool,
+) -> io::Result<()> {
     // A termination signal (SIGTERM/SIGHUP) or the console window closing sets
     // this flag; the loop then returns normally so the TerminalGuard's Drop runs
     // and restores the terminal. (Ctrl-C arrives as a key and is handled below.)
@@ -73,28 +93,40 @@ fn run(out: &mut impl Write, classic: bool) -> io::Result<()> {
     let mut tick: u64 = 0;
     let mut entities = build_scene(w, h, classic, &mut rng);
     let mut paused = false;
+    let started = Instant::now();
 
     loop {
         // A caught signal (SIGTERM, SIGHUP, ...) exits via the guard. Only an
         // uncatchable SIGKILL can skip cleanup.
-        if terminate.load(Ordering::Relaxed) {
+        if terminate.load(Ordering::Relaxed)
+            || duration.is_some_and(|duration| started.elapsed() >= duration)
+        {
             return Ok(());
         }
 
         // poll() is both the input reader and the ~10fps frame clock: it blocks
         // up to 100ms for an event, exactly like the original's halfdelay(1).
-        if event::poll(Duration::from_millis(100))? {
+        let poll_duration = duration
+            .map(|duration| duration.saturating_sub(started.elapsed()))
+            .unwrap_or(Duration::from_millis(100))
+            .min(Duration::from_millis(100));
+        if event::poll(poll_duration)? {
             match event::read()? {
-                Event::Key(k) => match k.code {
-                    // Raw mode swallows SIGINT, so handle Ctrl-C / Ctrl-D here.
-                    KeyCode::Char('c' | 'd') if k.modifiers.contains(KeyModifiers::CONTROL) => {
-                        return Ok(())
+                Event::Key(k) => {
+                    if exit_on_any_key {
+                        return Ok(());
                     }
-                    KeyCode::Char('q') => return Ok(()),
-                    KeyCode::Char('p') => paused = !paused,
-                    KeyCode::Char('r') => entities = build_scene(w, h, classic, &mut rng),
-                    _ => {}
-                },
+                    match k.code {
+                        // Raw mode swallows SIGINT, so handle Ctrl-C / Ctrl-D here.
+                        KeyCode::Char('c' | 'd') if k.modifiers.contains(KeyModifiers::CONTROL) => {
+                            return Ok(());
+                        }
+                        KeyCode::Char('q') => return Ok(()),
+                        KeyCode::Char('p') => paused = !paused,
+                        KeyCode::Char('r') => entities = build_scene(w, h, classic, &mut rng),
+                        _ => {}
+                    }
+                }
                 Event::Resize(nw, nh) => {
                     w = nw;
                     h = nh;
@@ -265,11 +297,16 @@ struct TerminalGuard {
 impl TerminalGuard {
     fn enter() -> io::Result<Self> {
         terminal::enable_raw_mode()?;
-        let mut out = io::stdout();
+        let mut guard = TerminalGuard { out: io::stdout() };
         // Disable auto-wrap: a full-width row must not wrap past the last
         // column, or it compounds with our newline and drifts the frame.
-        execute!(out, EnterAlternateScreen, cursor::Hide, DisableLineWrap)?;
-        Ok(TerminalGuard { out })
+        execute!(
+            guard.out,
+            EnterAlternateScreen,
+            cursor::Hide,
+            DisableLineWrap
+        )?;
+        Ok(guard)
     }
 }
 
@@ -277,5 +314,31 @@ impl Drop for TerminalGuard {
     fn drop(&mut self) {
         let _ = execute!(self.out, cursor::Show, EnableLineWrap, LeaveAlternateScreen);
         let _ = terminal::disable_raw_mode();
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parses_bounded_run_options() {
+        let cli = Cli::try_parse_from([
+            "asciiquarium-rs",
+            "--classic",
+            "--duration-seconds",
+            "3",
+            "--exit-on-any-key",
+        ])
+        .unwrap();
+
+        assert!(cli.classic);
+        assert_eq!(cli.duration_seconds.unwrap().get(), 3);
+        assert!(cli.exit_on_any_key);
+    }
+
+    #[test]
+    fn rejects_zero_duration() {
+        assert!(Cli::try_parse_from(["asciiquarium-rs", "--duration-seconds", "0"]).is_err());
     }
 }
