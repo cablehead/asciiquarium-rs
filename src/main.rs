@@ -297,11 +297,16 @@ struct TerminalGuard {
 impl TerminalGuard {
     fn enter() -> io::Result<Self> {
         terminal::enable_raw_mode()?;
-        let mut out = io::stdout();
+        let mut guard = TerminalGuard { out: io::stdout() };
         // Disable auto-wrap: a full-width row must not wrap past the last
         // column, or it compounds with our newline and drifts the frame.
-        execute!(out, EnterAlternateScreen, cursor::Hide, DisableLineWrap)?;
-        Ok(TerminalGuard { out })
+        execute!(
+            guard.out,
+            EnterAlternateScreen,
+            cursor::Hide,
+            DisableLineWrap
+        )?;
+        Ok(guard)
     }
 }
 
