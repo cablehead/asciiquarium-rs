@@ -83,11 +83,15 @@ with the Perl original if you have both.
 ```
 asciiquarium-rs             # swim
 asciiquarium-rs --classic   # classic art set (-c works too)
+asciiquarium-rs --duration-seconds 3
+asciiquarium-rs --exit-on-any-key
 ```
 
 From a checkout, use `cargo run` in place of the command.
 
 Keys: `q` quit, `p` pause, `r` rebuild. The scene refits when you resize.
+`--exit-on-any-key` replaces those controls with a single exit action, and
+`--duration-seconds` exits cleanly after the requested positive duration.
 
 ## Credit and lineage
 
