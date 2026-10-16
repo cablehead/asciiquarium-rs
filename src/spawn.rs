@@ -8,6 +8,7 @@ use crossterm::style::Color;
 use rand::Rng;
 
 use crate::art;
+use crate::clock;
 use crate::entity::{rand_color, resolve_fish_mask, Entity, EntityType, Frame, OnDeath};
 
 // Depths, lower draws on top (see the original's %depth table).
@@ -15,10 +16,14 @@ const Z_SHARK: i32 = 2;
 const Z_TEETH: i32 = 3;
 const Z_SEAWEED: i32 = 21;
 const Z_CASTLE: i32 = 22;
+const Z_CLOCK: i32 = 23; // behind everything underwater
 const Z_WATER_GAP1: i32 = 7; // ship
 const Z_WATER_GAP2: i32 = 5; // whale, sea monster
 const Z_BIG_FISH: i32 = 2;
 const WATER_TOP: i32 = 5;
+// The castle's top-left corner, as offsets from the bottom-right of the screen.
+const CASTLE_LEFT: i32 = 32;
+const CASTLE_TOP: i32 = 13;
 
 /// Roughly ten ticks per second, used to convert the seaweed's minutes-long
 /// lifetime into ticks.
@@ -89,8 +94,8 @@ pub fn water(w: u16) -> Vec<Entity> {
 pub fn castle(w: u16, h: u16) -> Entity {
     let mut e = ent(
         EntityType::Castle,
-        (w as i32 - 32) as f64,
-        (h as i32 - 13) as f64,
+        (w as i32 - CASTLE_LEFT) as f64,
+        (h as i32 - CASTLE_TOP) as f64,
         Z_CASTLE,
         vec![Frame::new(art::CASTLE[0], art::CASTLE[1])],
     );
@@ -132,6 +137,39 @@ pub fn seaweed(w: u16, h: u16, tick: u64, rng: &mut impl Rng) -> Entity {
     let secs = between(rng, 8 * 60, 12 * 60) as u64;
     e.die_tick = Some(tick + secs * TICKS_PER_SEC);
     e.on_death = OnDeath::Seaweed;
+    e
+}
+
+/// The background clock showing `text`, centered in the water below the
+/// surface rows. If that puts it behind the castle, it moves into the open
+/// water left of the castle when it fits there, else stays put (hidden).
+pub fn clock(w: u16, h: u16, text: &str) -> Entity {
+    let (w, h) = (w as i32, h as i32);
+    let top = WATER_TOP + 4;
+    let (castle_x, castle_y) = (w - CASTLE_LEFT, h - CASTLE_TOP);
+
+    // Center between columns `left` and `right`, leaving a little water around
+    // the clock before choosing the big font.
+    let place = |left: i32, right: i32| {
+        let frame = Frame::new(&clock::shape(text, right - left - 4, h - top - 2), "");
+        let x = left + (right - left - frame.width()) / 2;
+        let y = (top + (h - top - frame.height()) / 2).max(top);
+        (frame, x, y)
+    };
+    let hits_castle =
+        |f: &Frame, x: i32, y: i32| x + f.width() > castle_x && y + f.height() > castle_y;
+
+    let (mut frame, mut x, mut y) = place(0, w);
+    if hits_castle(&frame, x, y) {
+        let (f, lx, ly) = place(0, castle_x);
+        if lx >= 0 && !hits_castle(&f, lx, ly) {
+            (frame, x, y) = (f, lx, ly);
+        }
+    }
+
+    let mut e = ent(EntityType::Clock, x as f64, y as f64, Z_CLOCK, vec![frame]);
+    e.default_color = Color::DarkBlue;
+    e.auto_trans = true;
     e
 }
 
@@ -417,6 +455,32 @@ fn perl_split_nl(s: &str) -> Vec<&str> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn clock_rect(w: u16, h: u16) -> (i32, i32, i32) {
+        let e = clock(w, h, "12:34");
+        (e.x as i32, e.current().width(), e.current().height())
+    }
+
+    #[test]
+    fn clock_is_centered_and_big_on_a_large_screen() {
+        let (x, cw, ch) = clock_rect(120, 40);
+        assert_eq!((cw, ch), (38, 7));
+        assert_eq!(x, (120 - 38) / 2);
+    }
+
+    #[test]
+    fn clock_moves_left_of_the_castle_when_crowded() {
+        // Centered, the small clock would overlap the castle at x = 70 - 32.
+        let (x, cw, ch) = clock_rect(70, 22);
+        assert_eq!(ch, 5);
+        assert!(x >= 0 && x + cw <= 70 - CASTLE_LEFT);
+    }
+
+    #[test]
+    fn clock_stays_centered_when_nothing_fits_beside_the_castle() {
+        let (x, cw, _) = clock_rect(40, 24);
+        assert_eq!(x, (40 - cw) / 2);
+    }
 
     #[test]
     fn perl_split_drops_trailing_empties() {

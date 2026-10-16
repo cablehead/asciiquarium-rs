@@ -83,13 +83,15 @@ with the Perl original if you have both.
 ```
 asciiquarium-rs             # swim
 asciiquarium-rs --classic   # classic art set (-c works too)
+asciiquarium-rs --clock     # local time behind the fish (--clock 12 for 12-hour)
 asciiquarium-rs --duration-seconds 3
 asciiquarium-rs --exit-on-any-key
 ```
 
 From a checkout, use `cargo run` in place of the command.
 
-Keys: `q` quit, `p` pause, `r` rebuild. The scene refits when you resize.
+Keys: `q` quit, `p` pause, `r` rebuild, `t` toggle the clock, `h` switch it
+between 12- and 24-hour. The scene refits when you resize.
 `--exit-on-any-key` replaces those controls with a single exit action, and
 `--duration-seconds` exits cleanly after the requested positive duration.
 
