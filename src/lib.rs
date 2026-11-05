@@ -2,6 +2,7 @@
 //! tests share the same compositor, entity model, art, and spawners.
 
 pub mod art;
+pub mod clock;
 pub mod entity;
 pub mod render;
 pub mod spawn;

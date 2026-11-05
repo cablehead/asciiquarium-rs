@@ -22,6 +22,7 @@ name = "asciiquarium-rs"
 path = "src/main.rs"
 
 [dependencies]
+chrono = { version = "0.4.45", default-features = false, features = ["clock"] }
 clap = { version = "4", features = ["derive"] }
 crossterm = "0.28"
 # `termination` also catches SIGTERM/SIGHUP and the Windows console closing, not

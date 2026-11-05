@@ -21,14 +21,14 @@
 //! art (`art`), and the spawners (`spawn`), driven by a crossterm event loop
 //! that doubles as the frame clock.
 
-use asciiquarium::{entity, render, spawn};
+use asciiquarium::{clock, entity, render, spawn};
 
 use std::collections::{HashMap, HashSet};
 use std::io::{self, Write};
 use std::num::NonZeroU64;
 use std::time::{Duration, Instant};
 
-use clap::Parser;
+use clap::{Parser, ValueEnum};
 use crossterm::{
     cursor,
     event::{self, Event, KeyCode, KeyModifiers},
@@ -47,6 +47,10 @@ struct Cli {
     #[arg(short = 'c', long)]
     classic: bool,
 
+    /// Show the local time in the background (24-hour unless given 12).
+    #[arg(long, value_enum, value_name = "HOURS", num_args = 0..=1, default_missing_value = "24")]
+    clock: Option<ClockStyle>,
+
     /// Exit after this many seconds.
     #[arg(long, value_name = "SECONDS")]
     duration_seconds: Option<NonZeroU64>,
@@ -56,12 +60,30 @@ struct Cli {
     exit_on_any_key: bool,
 }
 
+#[derive(Clone, Copy, PartialEq, Eq, Debug, ValueEnum)]
+enum ClockStyle {
+    #[value(name = "12")]
+    TwelveHour,
+    #[value(name = "24")]
+    TwentyFourHour,
+}
+
+impl ClockStyle {
+    fn toggled(self) -> Self {
+        match self {
+            ClockStyle::TwelveHour => ClockStyle::TwentyFourHour,
+            ClockStyle::TwentyFourHour => ClockStyle::TwelveHour,
+        }
+    }
+}
+
 fn main() -> io::Result<()> {
     let cli = Cli::parse();
     let mut term = TerminalGuard::enter()?;
     run(
         &mut term.out,
         cli.classic,
+        cli.clock,
         cli.duration_seconds
             .map(|seconds| Duration::from_secs(seconds.get())),
         cli.exit_on_any_key,
@@ -71,6 +93,7 @@ fn main() -> io::Result<()> {
 fn run(
     out: &mut impl Write,
     classic: bool,
+    clock: Option<ClockStyle>,
     duration: Option<Duration>,
     exit_on_any_key: bool,
 ) -> io::Result<()> {
@@ -95,6 +118,8 @@ fn run(
     let mut tick: u64 = 0;
     let mut entities = build_scene(w, h, classic, &mut rng);
     let mut paused = false;
+    let mut show_clock = clock.is_some();
+    let mut clock_style = clock.unwrap_or(ClockStyle::TwentyFourHour);
     let started = Instant::now();
 
     loop {
@@ -121,6 +146,8 @@ fn run(
                         }
                         KeyCode::Char('q') => return Ok(()),
                         KeyCode::Char('p') => paused = !paused,
+                        KeyCode::Char('t') => show_clock = !show_clock,
+                        KeyCode::Char('h') => clock_style = clock_style.toggled(),
                         KeyCode::Char('r') => entities = build_scene(w, h, classic, &mut rng),
                         _ => {}
                     }
@@ -139,6 +166,9 @@ fn run(
             advance(&mut entities, tick, w, h, classic, &mut rng);
             tick += 1;
         }
+
+        // The clock runs on wall time, so it updates even while paused.
+        sync_clock(&mut entities, show_clock.then_some(clock_style), w, h);
 
         // Draw back-to-front: higher z first, lower z last (on top).
         screen.clear();
@@ -209,6 +239,16 @@ fn advance(
 
     entities.retain(|e| e.alive);
     entities.extend(spawns);
+}
+
+/// Replace the clock entity with one showing the current time, or drop it when
+/// hidden. Rebuilding every frame is cheap and covers scene rebuilds and resizes.
+fn sync_clock(entities: &mut Vec<Entity>, style: Option<ClockStyle>, w: u16, h: u16) {
+    entities.retain(|e| e.etype != EntityType::Clock);
+    if let Some(style) = style {
+        let text = clock::now_text(style == ClockStyle::TwelveHour);
+        entities.push(spawn::clock(w, h, &text));
+    }
 }
 
 /// Cell-overlap collisions among physical entities. Two rules, as in the
@@ -340,6 +380,32 @@ mod tests {
         assert!(cli.classic);
         assert_eq!(cli.duration_seconds.unwrap().get(), 3);
         assert!(cli.exit_on_any_key);
+    }
+
+    #[test]
+    fn parses_clock_option() {
+        let parse = |args: &[&str]| Cli::try_parse_from(args).unwrap().clock;
+        assert_eq!(parse(&["asciiquarium-rs"]), None);
+        assert_eq!(
+            parse(&["asciiquarium-rs", "--clock"]),
+            Some(ClockStyle::TwentyFourHour)
+        );
+        assert_eq!(
+            parse(&["asciiquarium-rs", "--clock", "12"]),
+            Some(ClockStyle::TwelveHour)
+        );
+        assert_eq!(
+            parse(&["asciiquarium-rs", "--clock=24"]),
+            Some(ClockStyle::TwentyFourHour)
+        );
+        assert!(Cli::try_parse_from(["asciiquarium-rs", "--clock", "13"]).is_err());
+    }
+
+    #[test]
+    fn clock_style_toggles_both_ways() {
+        let s = ClockStyle::TwelveHour;
+        assert_eq!(s.toggled(), ClockStyle::TwentyFourHour);
+        assert_eq!(s.toggled().toggled(), s);
     }
 
     #[test]

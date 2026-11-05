@@ -53,6 +53,7 @@ pub enum EntityType {
     Monster,
     BigFish,
     Splat,
+    Clock,
 }
 
 /// What to spawn when this entity dies, the port of Term::Animation's
